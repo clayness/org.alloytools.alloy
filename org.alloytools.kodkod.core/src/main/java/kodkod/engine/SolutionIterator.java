@@ -1,10 +1,5 @@
 package kodkod.engine;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
-
 import kodkod.ast.Formula;
 import kodkod.ast.Relation;
 import kodkod.engine.config.Options;
@@ -14,6 +9,11 @@ import kodkod.engine.satlab.SATAbortedException;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.TupleSet;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 /**
  * An iterator over all solutions of a model.
@@ -86,6 +86,9 @@ public final class SolutionIterator implements Iterator<Solution> {
 
         final SATSolver cnf = transl.cnf();
         final int primaryVars = transl.numPrimaryVariables();
+
+//        final int[] notModel1 = {8};
+//        cnf.addClause(notModel1);
 
         transl.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
 

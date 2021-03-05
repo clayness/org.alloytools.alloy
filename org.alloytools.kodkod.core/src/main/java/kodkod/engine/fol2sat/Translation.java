@@ -21,9 +21,6 @@
  */
 package kodkod.engine.fol2sat;
 
-import java.util.Map;
-import java.util.Set;
-
 import kodkod.ast.Relation;
 import kodkod.engine.bool.BooleanConstant;
 import kodkod.engine.config.Options;
@@ -36,6 +33,9 @@ import kodkod.util.ints.IndexedEntry;
 import kodkod.util.ints.IntIterator;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.Ints;
+
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Stores the translation of a Kodkod problem to CNF. A problem consists of a
@@ -239,7 +239,7 @@ public abstract class Translation {
     public static final class Whole extends Translation {
 
         private final SATSolver            solver;
-        private final Map<Relation,IntSet> primaryVarUsage;
+        public Map<Relation,IntSet> primaryVarUsage;
         private final TranslationLog       log;
         private final int                  maxPrimaryVar;
 
@@ -280,7 +280,7 @@ public abstract class Translation {
          */
         @Override
         public IntSet primaryVariables(Relation relation) {
-            final IntSet vars = primaryVarUsage.get(relation);
+            IntSet vars = primaryVarUsage.get(relation);
             return vars == null ? Ints.EMPTY_SET : vars;
         }
 

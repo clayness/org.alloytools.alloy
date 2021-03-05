@@ -21,12 +21,12 @@
  */
 package kodkod.instance;
 
-import java.util.Collection;
-import java.util.List;
-
 import kodkod.engine.CapacityExceededException;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.Ints;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * A factory class that facilitates creation of tuples and tuple sets drawn from
@@ -314,7 +314,7 @@ public final class TupleFactory {
      *            TupleFactory.this.base^(arity - 1 - i))
      * @author Emina Torlak
      */
-    private final class IntTuple extends Tuple {
+    public final class IntTuple extends Tuple {
 
         private final int arity, index;
 

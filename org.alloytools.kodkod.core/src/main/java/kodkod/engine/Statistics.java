@@ -53,7 +53,7 @@ public final class Statistics {
     /**
      * Constructs a new Statistics object using the provided values.
      */
-    Statistics(Translation translation, long translationTime, long solvingTime) {
+    public Statistics(Translation translation, long translationTime, long solvingTime) {
         this(translation.numPrimaryVariables(), translation.cnf().numberOfVariables(), translation.cnf().numberOfClauses(), translationTime, solvingTime);
     }
 

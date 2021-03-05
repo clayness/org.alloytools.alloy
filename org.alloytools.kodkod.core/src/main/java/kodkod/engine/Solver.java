@@ -21,22 +21,18 @@
  */
 package kodkod.engine;
 
-import java.util.Iterator;
-
 import kodkod.ast.Formula;
 import kodkod.ast.IntExpression;
 import kodkod.ast.Relation;
 import kodkod.engine.config.Options;
-import kodkod.engine.fol2sat.HigherOrderDeclException;
-import kodkod.engine.fol2sat.Translation;
-import kodkod.engine.fol2sat.TranslationLog;
-import kodkod.engine.fol2sat.Translator;
-import kodkod.engine.fol2sat.UnboundLeafException;
+import kodkod.engine.fol2sat.*;
 import kodkod.engine.satlab.SATAbortedException;
 import kodkod.engine.satlab.SATProver;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
 import kodkod.instance.Instance;
+
+import java.util.Iterator;
 
 /**
  * A computational engine for solving relational satisfiability problems. Such a
@@ -236,7 +232,7 @@ public final class Solver implements KodkodSolver {
      * @param stats translation / solving stats
      * @return the result of solving an unsat formula.
      */
-    static Solution unsat(Translation.Whole translation, Statistics stats) {
+    public static Solution unsat(Translation.Whole translation, Statistics stats) {
         final SATSolver cnf = translation.cnf();
         final TranslationLog log = translation.log();
         if (cnf instanceof SATProver && log != null) {

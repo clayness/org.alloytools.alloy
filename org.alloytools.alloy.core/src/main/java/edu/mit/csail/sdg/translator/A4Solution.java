@@ -15,73 +15,15 @@
 
 package edu.mit.csail.sdg.translator;
 
-import static edu.mit.csail.sdg.ast.Sig.NONE;
-import static edu.mit.csail.sdg.ast.Sig.SEQIDX;
-import static edu.mit.csail.sdg.ast.Sig.SIGINT;
-import static edu.mit.csail.sdg.ast.Sig.STRING;
-import static edu.mit.csail.sdg.ast.Sig.UNIV;
-import static kodkod.engine.Solution.Outcome.UNSATISFIABLE;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.alloytools.alloy.core.AlloyCore;
-import org.alloytools.util.table.Table;
-
-import edu.mit.csail.sdg.alloy4.A4Reporter;
-import edu.mit.csail.sdg.alloy4.ConstList;
-import edu.mit.csail.sdg.alloy4.ConstMap;
-import edu.mit.csail.sdg.alloy4.Err;
-import edu.mit.csail.sdg.alloy4.ErrorAPI;
-import edu.mit.csail.sdg.alloy4.ErrorFatal;
-import edu.mit.csail.sdg.alloy4.ErrorSyntax;
-import edu.mit.csail.sdg.alloy4.Pair;
-import edu.mit.csail.sdg.alloy4.Pos;
-import edu.mit.csail.sdg.alloy4.SafeList;
-import edu.mit.csail.sdg.alloy4.TableView;
-import edu.mit.csail.sdg.alloy4.UniqueNameGenerator;
-import edu.mit.csail.sdg.alloy4.Util;
-import edu.mit.csail.sdg.ast.Command;
-import edu.mit.csail.sdg.ast.Expr;
-import edu.mit.csail.sdg.ast.ExprBinary;
-import edu.mit.csail.sdg.ast.ExprConstant;
-import edu.mit.csail.sdg.ast.ExprUnary;
-import edu.mit.csail.sdg.ast.ExprVar;
-import edu.mit.csail.sdg.ast.Func;
-import edu.mit.csail.sdg.ast.Sig;
-import edu.mit.csail.sdg.ast.Sig.Field;
-import edu.mit.csail.sdg.ast.Sig.PrimSig;
-import edu.mit.csail.sdg.ast.Type;
+import edu.mit.csail.sdg.alloy4.*;
+import edu.mit.csail.sdg.ast.*;
+import edu.mit.csail.sdg.ast.Sig.*;
 import edu.mit.csail.sdg.translator.A4Options.SatSolver;
-import kodkod.ast.BinaryExpression;
-import kodkod.ast.BinaryFormula;
 import kodkod.ast.Decl;
-import kodkod.ast.Expression;
-import kodkod.ast.Formula;
-import kodkod.ast.IntExpression;
-import kodkod.ast.Node;
-import kodkod.ast.Relation;
-import kodkod.ast.Variable;
+import kodkod.ast.*;
 import kodkod.ast.operator.ExprOperator;
 import kodkod.ast.operator.FormulaOperator;
-import kodkod.engine.CapacityExceededException;
-import kodkod.engine.Evaluator;
-import kodkod.engine.Proof;
-import kodkod.engine.Solution;
-import kodkod.engine.Solver;
+import kodkod.engine.*;
 import kodkod.engine.config.AbstractReporter;
 import kodkod.engine.config.Options;
 import kodkod.engine.config.Reporter;
@@ -90,13 +32,19 @@ import kodkod.engine.fol2sat.Translator;
 import kodkod.engine.satlab.SATFactory;
 import kodkod.engine.ucore.HybridStrategy;
 import kodkod.engine.ucore.RCEStrategy;
-import kodkod.instance.Bounds;
-import kodkod.instance.Instance;
-import kodkod.instance.Tuple;
-import kodkod.instance.TupleFactory;
-import kodkod.instance.TupleSet;
-import kodkod.instance.Universe;
+import kodkod.instance.*;
 import kodkod.util.ints.IndexedEntry;
+import org.alloytools.alloy.core.AlloyCore;
+import org.alloytools.util.table.Table;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static edu.mit.csail.sdg.ast.Sig.*;
+import static kodkod.engine.Solution.Outcome.UNSATISFIABLE;
 
 /**
  * This class stores a SATISFIABLE or UNSATISFIABLE solution. It is also used as
@@ -192,7 +140,7 @@ public final class A4Solution {
     private boolean                           solved      = false;
 
     /** The Kodkod Bounds object. */
-    private Bounds                            bounds;
+    public Bounds                            bounds;
 
     /**
      * The list of Kodkod formulas; can be empty if unknown; once a solution is
@@ -229,7 +177,7 @@ public final class A4Solution {
     /**
      * If solved==true and is satisfiable, then this is the Kodkod evaluator.
      */
-    private Evaluator                         eval        = null;
+    public Evaluator                         eval        = null;
 
     /** If not null, you can ask it to get another solution. */
     private Iterator<Solution>                kEnumerator = null;
@@ -284,7 +232,7 @@ public final class A4Solution {
         this.unrolls = opt.unrolls;
         this.sigs = new SafeList<Sig>(Arrays.asList(UNIV, SIGINT, SEQIDX, STRING, NONE));
         this.a2k = Util.asMap(new Expr[] {
-                                          UNIV, SIGINT, SEQIDX, STRING, NONE
+                UNIV, SIGINT, SEQIDX, STRING, NONE
         }, Expression.INTS.union(KK_STRING), Expression.INTS, KK_SEQIDX, KK_STRING, Expression.NONE);
         this.k2pos = new LinkedHashMap<Formula,Object>();
         this.rel2type = new LinkedHashMap<Relation,Type>();
@@ -315,7 +263,7 @@ public final class A4Solution {
         int min = min(), max = max();
         if (max >= min)
             for (int i = min; i <= max; i++) { // Safe since we know 1 <=
-                                              // bitwidth <= 30
+                // bitwidth <= 30
                 Tuple ii = factory.tuple("" + i);
                 TupleSet is = factory.range(ii, ii);
                 bounds.boundExactly(i, is);
@@ -383,20 +331,20 @@ public final class A4Solution {
             solver.options().setCoreGranularity(opt.coreGranularity);
         } else {
             solver.options().setSolver(SATFactory.DefaultSAT4J); // Even for
-                                                                // "KK" and
-                                                                // "CNF", we
-                                                                // choose
-                                                                // SAT4J
-                                                                // here;
-                                                                // later,
-                                                                // just
-                                                                // before
-                                                                // solving,
-                                                                // we'll
-                                                                // change it
-                                                                // to a
-                                                                // Write2CNF
-                                                                // solver
+            // "KK" and
+            // "CNF", we
+            // choose
+            // SAT4J
+            // here;
+            // later,
+            // just
+            // before
+            // solving,
+            // we'll
+            // change it
+            // to a
+            // Write2CNF
+            // solver
         }
         solver.options().setSymmetryBreaking(sym);
         solver.options().setSkolemDepth(opt.skolemDepth);
@@ -724,8 +672,8 @@ public final class A4Solution {
             }
         }
         return null; // Current only UNION, PRODUCT, and DIFFERENCE of Sigs and
-                    // Fields and ExprConstant.EMPTYNESS are allowed in a
-                    // defined field's definition.
+        // Fields and ExprConstant.EMPTYNESS are allowed in a
+        // defined field's definition.
     }
 
     /**
@@ -1040,7 +988,7 @@ public final class A4Solution {
             return; // If one formula is false, we don't need the others
         if (newFormula == Formula.FALSE)
             formulas.clear(); // If one formula is false, we don't need the
-                             // others
+        // others
         formulas.add(newFormula);
         if (pos != null && pos != Pos.UNKNOWN)
             k2pos(newFormula, pos);
@@ -1057,7 +1005,7 @@ public final class A4Solution {
             return; // If one formula is false, we don't need the others
         if (newFormula == Formula.FALSE)
             formulas.clear(); // If one formula is false, we don't need the
-                             // others
+        // others
         formulas.add(newFormula);
         if (expr != null)
             k2pos(newFormula, expr);
@@ -1289,7 +1237,7 @@ public final class A4Solution {
         for (Tuple t : list) {
             if (frame.atom2sig.containsKey(t.atom(0)))
                 continue; // This means one of the subsig has already claimed
-                         // this atom.
+            // this atom.
             String x = signame + "$" + i;
             i++;
             frame.atom2sig.put(t.atom(0), s);
@@ -1311,8 +1259,11 @@ public final class A4Solution {
      */
     A4Solution solve(final A4Reporter rep, Command cmd, Simplifier simp, boolean tryBookExamples) throws Err, IOException {
         // If already solved, then return this object as is
-        if (solved)
+        if (solved){
+            List<Relation> relations = (List<Relation>) this.bounds.relations();
             return this;
+        }
+
         // If cmd==null, then all four arguments are ignored, and we simply use
         // the lower bound of each relation
         if (cmd == null) {
@@ -1341,13 +1292,13 @@ public final class A4Solution {
         Solution sol = null;
         final Reporter oldReporter = solver.options().reporter();
         final boolean solved[] = new boolean[] {
-                                                true
+                true
         };
         solver.options().setReporter(new AbstractReporter() { // Set up a
-                                                             // reporter to
-                                                             // catch the
-                                                             // type+pos of
-                                                             // skolems
+            // reporter to
+            // catch the
+            // type+pos of
+            // skolems
 
             @Override
             public void skolemizing(Decl decl, Relation skolem, List<Decl> predecl) {
@@ -1371,14 +1322,14 @@ public final class A4Solution {
                     return;
                 else
                     solved[0] = true; // initially solved[0] is true, so we
-                                     // won't report the # of vars/clauses
+                // won't report the # of vars/clauses
                 if (rep != null)
                     rep.solve(primaryVars, vars, clauses);
             }
         });
         if (!opt.solver.equals(SatSolver.CNF) && !opt.solver.equals(SatSolver.KK) && tryBookExamples) { // try
-                                                                                                       // book
-                                                                                                       // examples
+            // book
+            // examples
             A4Reporter r = AlloyCore.isDebug() ? rep : null;
             try {
                 sol = BookExamples.trial(r, this, fgoal, solver, cmd.check);
@@ -1387,11 +1338,12 @@ public final class A4Solution {
             }
         }
         solved[0] = false; // this allows the reporter to report the # of
-                          // vars/clauses
+        // vars/clauses
         for (Relation r : bounds.relations()) {
             formulas.add(r.eq(r));
         } // Without this, kodkod refuses to grow unmentioned relations
         fgoal = Formula.and(formulas);
+
         // Now pick the solver and solve it!
         if (opt.solver.equals(SatSolver.KK)) {
             File tmpCNF = File.createTempFile("tmp", ".java", new File(opt.tempDirectory));
@@ -1419,8 +1371,8 @@ public final class A4Solution {
             return null;
         }
         if (!solver.options().solver().incremental() /*
-                                                      * || solver.options().solver()==SATFactory. ZChaffMincost
-                                                      */) {
+         * || solver.options().solver()==SATFactory. ZChaffMincost
+         */) {
             if (sol == null)
                 sol = solver.solve(fgoal, bounds);
         } else {
@@ -1477,10 +1429,427 @@ public final class A4Solution {
             rep.resultSAT(cmd, time, this);
         else
             rep.resultUNSAT(cmd, time, this);
+        System.out.println("first time is " + time);
         return this;
     }
 
     // ===================================================================================================//
+
+    // second run solve
+    A4Solution secondsolve(final A4Reporter rep, Command cmd, Simplifier simp, boolean tryBookExamples, ArrayList<A4Solution> insOfSol) throws Err, IOException {
+        // If already solved, then return this object as is
+        if (solved){
+            List<Relation> relations = (List<Relation>) this.bounds.relations();
+            return this;
+        }
+
+        // If cmd==null, then all four arguments are ignored, and we simply use
+        // the lower bound of each relation
+        if (cmd == null) {
+            Instance inst = new Instance(bounds.universe());
+            for (int max = max(), i = min(); i <= max; i++) {
+                Tuple it = factory.tuple("" + i);
+                inst.add(i, factory.range(it, it));
+            }
+            for (Relation r : bounds.relations())
+                inst.add(r, bounds.lowerBound(r));
+            eval = new Evaluator(inst, solver.options());
+            rename(this, null, null, new UniqueNameGenerator());
+            solved();
+            return this;
+        }
+        // Otherwise, prepare to do the solve...
+        final A4Options opt = originalOptions;
+        long time = System.currentTimeMillis();
+        rep.debug("Simplifying the bounds...\n");
+        if (opt.inferPartialInstance && simp != null && formulas.size() > 0 && !simp.simplify(rep, this, formulas))
+            addFormula(Formula.FALSE, Pos.UNKNOWN);
+        rep.translate(opt.solver.id(), bitwidth, maxseq, solver.options().skolemDepth(), solver.options().symmetryBreaking());
+        Formula fgoal = Formula.and(formulas);
+        rep.debug("Generating the solution...\n");
+        kEnumerator = null;
+        Solution sol = null;
+        final Reporter oldReporter = solver.options().reporter();
+        final boolean solved[] = new boolean[] {
+                true
+        };
+        solver.options().setReporter(new AbstractReporter() { // Set up a
+            // reporter to
+            // catch the
+            // type+pos of
+            // skolems
+
+            @Override
+            public void skolemizing(Decl decl, Relation skolem, List<Decl> predecl) {
+                try {
+                    Type t = kv2typepos(decl.variable()).a;
+                    if (t == Type.EMPTY)
+                        return;
+                    for (int i = (predecl == null ? -1 : predecl.size() - 1); i >= 0; i--) {
+                        Type pp = kv2typepos(predecl.get(i).variable()).a;
+                        if (pp == Type.EMPTY)
+                            return;
+                        t = pp.product(t);
+                    }
+                    kr2type(skolem, t);
+                } catch (Throwable ex) {} // Exception here is not fatal
+            }
+
+            @Override
+            public void solvingCNF(int primaryVars, int vars, int clauses) {
+                if (solved[0])
+                    return;
+                else
+                    solved[0] = true; // initially solved[0] is true, so we
+                // won't report the # of vars/clauses
+                if (rep != null)
+                    rep.solve(primaryVars, vars, clauses);
+            }
+        });
+        if (!opt.solver.equals(SatSolver.CNF) && !opt.solver.equals(SatSolver.KK) && tryBookExamples) { // try
+            // book
+            // examples
+            A4Reporter r = AlloyCore.isDebug() ? rep : null;
+            try {
+                sol = BookExamples.trial(r, this, fgoal, solver, cmd.check);
+            } catch (Throwable ex) {
+                sol = null;
+            }
+        }
+        solved[0] = false; // this allows the reporter to report the # of
+        // vars/clauses
+        for (Relation r : bounds.relations()) {
+            formulas.add(r.eq(r));
+        } // Without this, kodkod refuses to grow unmentioned relations
+        fgoal = Formula.and(formulas);
+//      write relations and formulas to file
+        Set<Relation> list = bounds.relations();
+
+        // get the set of relation from first run solution
+        Set<Relation> rs = new HashSet<>();
+        rs.addAll(insOfSol.get(0).bounds.relations());
+        for (Relation r : list){
+            System.out.println(r.name());
+            Iterator<Relation> relationIterator = rs.iterator();
+            Relation cur = r;
+            int flag = 0;
+            while (relationIterator.hasNext()) {
+                cur = relationIterator.next();
+                if (cur.name().equals(r.name())){
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag != 1) {
+                rs.remove(cur);
+                System.out.println("no");
+            }
+        }
+        ArrayList<Formula> f = this.formulas;
+        String stringOfFormula = f.toString();
+        String stringOfRelation = rs.toString();
+        Object[] fo = this.formulas.toArray();
+        Object[] ro = rs.toArray();
+        System.out.println("1");
+        ArrayList<Relation> rela = new ArrayList<>();
+
+
+        String solString1 = insOfSol.get(0).getAllAtoms().toString();
+//        for (Expr i : allAtoms){
+//            int a = 1;
+//            String b = i.toString();
+//        }
+
+
+        Pair<ArrayList<Formula>,ArrayList<Relation> > pair = A4Solution.extractBase(this.formulas, rs);
+        ArrayList<Formula> bFormula = pair.a;
+        ArrayList<Relation> bRelation = pair.b;
+
+        Map<Relation, TupleSet> lb = this.bounds.lowerBounds();
+        Map<Relation, TupleSet> ub = this.bounds.upperBounds();
+
+        // adjust the lower bounds
+        //TupleSet tupleSetForLowerBounds = new TupleSet(bounds.universe(), r.arity());
+        if (insOfSol.get(0).formulas.containsAll(bFormula)) {
+            for (Relation r : bounds.relations()) {
+                TupleSet tupleSetForUpperBounds = new TupleSet(bounds.universe(), r.arity());
+
+                Object[] cLb = bounds.upperBound(r).toArray();
+                if (cLb.length >= 1) {
+                    Object o = cLb[0];
+                }
+                // get the tupleSet of Relation r from prev result and store it in a new tupleSet
+                TupleSet preTupleSet = null;
+                for (A4Solution i : insOfSol) {
+                    Relation temp = r;
+                    String target = r.name();
+                    TupleFactory.IntTuple tInst = null;
+                    String atomString = i.getAllAtoms().toString();
+
+                    //find the corresponding r of second time in first time solution
+                    for (Relation insOfR: i.bounds.relations()) {
+                        if (insOfR.toString().equals(target)) {
+                            preTupleSet = new TupleSet(i.bounds.universe(), insOfR.arity());
+                            preTupleSet.addAll(i.bounds.lowerBound(insOfR)); //i.bounds.lowerBound(insOfR);
+                            target = insOfR.name();
+                            break;
+                        }
+                    }
+
+                    // reference
+//                    for (Object o : preTupleSet.toArray()) {
+//                        tInst = (TupleFactory.IntTuple) o;
+//                        if (!tupleSetForLowerBounds.contains(tInst)) {
+//                            tupleSetForLowerBounds.add(tInst);
+//                        }
+//                    }
+
+                    // working
+                    for (Object ins : cLb) {
+                        tInst = (TupleFactory.IntTuple) ins;
+                        if (preTupleSet == null) {
+                            break;
+                        }
+//                        if (atomString.contains(ins.toString())) {
+//                            tupleSetForUpperBounds.add(tInst);
+//                        }
+                        String[] t = ins.toString().split("\\[");
+                        String[] tt = t[1].split("\\[");
+                        if (tt.length >=1) {
+                            if (atomString.contains(tt[0]) && !tupleSetForUpperBounds.contains(tInst)) {
+                                tupleSetForUpperBounds.add(tInst);
+                            }
+                        }
+//                        String preArray = preTupleSet.toArray().toString();
+//                        String stringIns = ins.toString();
+//                        for (Object ii : preTupleSet) {
+//                            if (ii.toString().equals(ins.toString())) {
+//                                tupleSetForUpperBounds.add(tInst);
+//                                break;
+//                            }
+//                        }
+                    }
+//                    tupleSetForLowerBounds.retainAll(i.bounds.upperBound(r));
+                }
+                // refer the tupleSet to the corresponding relation
+                if (tupleSetForUpperBounds != null && tupleSetForUpperBounds.size() != 0) {
+                    this.bounds.lowers.put(r,tupleSetForUpperBounds);
+                }
+//                this.bounds.lowers.put(r,tupleSetForLowerBounds);
+            }
+        }
+
+        // adjust the upper bounds
+        if (this.formulas.containsAll(bFormula)) {
+            for (Relation r : bounds.relations()) {
+                TupleSet tupleSetForLowerBounds = new TupleSet(bounds.universe(), r.arity());
+
+                Object[] cLb = bounds.upperBound(r).toArray();
+                if (cLb.length >= 1) {
+                    Object o = cLb[0];
+                }
+                // get the tupleSet of Relation r from prev result and store it in a new tupleSet
+                TupleSet preTupleSet = null;
+                for (A4Solution i : insOfSol) {
+                    Relation temp = r;
+                    String target = r.name();
+                    TupleFactory.IntTuple tInst = null;
+                    String atomString = i.getAllAtoms().toString();
+
+                    //find the corresponding r of second time in first time solution
+                    for (Relation insOfR: i.bounds.relations()) {
+                        if (insOfR.toString().equals(target)) {
+                            preTupleSet = new TupleSet(i.bounds.universe(), insOfR.arity());
+                            preTupleSet.addAll(i.bounds.upperBound(insOfR)); //i.bounds.lowerBound(insOfR);
+                            target = insOfR.name();
+                            break;
+                        }
+                    }
+
+                    // reference
+//                    for (Object o : preTupleSet.toArray()) {
+//                        tInst = (TupleFactory.IntTuple) o;
+//                        if (!tupleSetForLowerBounds.contains(tInst)) {
+//                            tupleSetForLowerBounds.add(tInst);
+//                        }
+//                    }
+
+                    // working
+                    for (Object ins : cLb) {
+                        tInst = (TupleFactory.IntTuple) ins;
+                        if (preTupleSet == null) {
+                            break;
+                        }
+//                        String[] tt = ins.toString().split("\\]\\[");
+                        String[] t = ins.toString().split("\\[");
+                        String[] tt = t[1].split("\\]");
+                        if (tt.length >=1) {
+                            if (atomString.contains(tt[0]) && !tupleSetForLowerBounds.contains(tInst)) {
+                                tupleSetForLowerBounds.add(tInst);
+                            }
+                        }
+//                        String preArray = preTupleSet.toArray().toString();
+//                        String stringIns = ins.toString();
+//                        for (Object ii : preTupleSet) {
+//                            if (ii.toString().equals(ins.toString())) {
+//                                tupleSetForLowerBounds.add(tInst);
+//                                break;
+//                            }
+//                        }
+                    }
+//                    tupleSetForLowerBounds.retainAll(i.bounds.upperBound(r));
+                }
+                // refer the tupleSet to the corresponding relation
+                if (tupleSetForLowerBounds != null && tupleSetForLowerBounds.size() != 0) {
+                    this.bounds.uppers.put(r,tupleSetForLowerBounds);
+                }
+//                this.bounds.lowers.put(r,tupleSetForLowerBounds);
+            }
+        }
+
+        // Second time Now pick the solver and solve it!
+        if (opt.solver.equals(SatSolver.KK)) {
+            File tmpCNF = File.createTempFile("tmp", ".java", new File(opt.tempDirectory));
+            String out = tmpCNF.getAbsolutePath();
+            Util.writeAll(out, debugExtractKInput());
+            rep.resultCNF(out);
+            return null;
+        }
+        if (opt.solver.equals(SatSolver.CNF)) {
+            File tmpCNF = File.createTempFile("tmp", ".cnf", new File(opt.tempDirectory));
+            String out = tmpCNF.getAbsolutePath();
+            solver.options().setSolver(WriteCNF.factory(out));
+            try {
+                sol = solver.solve(fgoal, bounds);
+            } catch (WriteCNF.WriteCNFCompleted ex) {
+                rep.resultCNF(out);
+                return null;
+            }
+            // The formula is trivial (otherwise, it would have thrown an
+            // exception)
+            // Since the user wants it in CNF format, we manually generate a
+            // trivially satisfiable (or unsatisfiable) CNF file.
+            Util.writeAll(out, sol.instance() != null ? "p cnf 1 1\n1 0\n" : "p cnf 1 2\n1 0\n-1 0\n");
+            rep.resultCNF(out);
+            return null;
+        }
+        if (!solver.options().solver().incremental() /*
+         * || solver.options().solver()==SATFactory. ZChaffMincost
+         */) {
+            if (sol == null)
+                sol = solver.solve(fgoal, bounds);
+        } else {
+            kEnumerator = new Peeker<Solution>(solver.solveAll(fgoal, bounds));
+            if (sol == null)
+                sol = kEnumerator.next();
+        }
+        if (!solved[0])
+            rep.solve(0, 0, 0);
+        final Instance inst = sol.instance();
+        // To ensure no more output during SolutionEnumeration
+        solver.options().setReporter(oldReporter);
+        // If unsatisfiable, then retreive the unsat core if desired
+        if (inst == null && solver.options().solver() == SATFactory.MiniSatProver) {
+            try {
+                lCore = new LinkedHashSet<Node>();
+                Proof p = sol.proof();
+                if (sol.outcome() == UNSATISFIABLE) {
+                    // only perform the minimization if it was UNSATISFIABLE,
+                    // rather than TRIVIALLY_UNSATISFIABLE
+                    int i = p.highLevelCore().size();
+                    rep.minimizing(cmd, i);
+                    if (opt.coreMinimization == 0)
+                        try {
+                            p.minimize(new RCEStrategy(p.log()));
+                        } catch (Throwable ex) {}
+                    if (opt.coreMinimization == 1)
+                        try {
+                            p.minimize(new HybridStrategy(p.log()));
+                        } catch (Throwable ex) {}
+                    rep.minimized(cmd, i, p.highLevelCore().size());
+                }
+                for (Iterator<TranslationRecord> it = p.core(); it.hasNext();) {
+                    Object n = it.next().node();
+                    if (n instanceof Formula)
+                        lCore.add((Formula) n);
+                }
+                Map<Formula,Node> map = p.highLevelCore();
+                hCore = new LinkedHashSet<Node>(map.keySet());
+                hCore.addAll(map.values());
+            } catch (Throwable ex) {
+                lCore = hCore = null;
+            }
+        }
+        // If satisfiable, then add/rename the atoms and skolems
+        if (inst != null) {
+            eval = new Evaluator(inst, solver.options());
+            rename(this, null, null, new UniqueNameGenerator());
+        }
+        // report the result
+        solved();
+        time = System.currentTimeMillis() - time;
+        if (inst != null)
+            rep.resultSAT(cmd, time, this);
+        else
+            rep.resultUNSAT(cmd, time, this);
+        System.out.println("second time is " + time);
+        return this;
+    }
+
+    // extract base
+    static Pair<ArrayList<Formula>,ArrayList<Relation> > extractBase(ArrayList<Formula> fs,Set<Relation> rs){
+        ArrayList<Formula> bf = new ArrayList<>();          // used to store the basic formula
+        ArrayList<String> br = new ArrayList<>();           // used to store the brr as type of String
+        ArrayList<Relation> brr = new ArrayList<>();        // used to store the basic relation
+
+        String relationString = rs.toString();              // R type: String
+
+        for (Formula f : fs){
+            ArrayList<String> relationFromFormula = getRelationalVars(f);       // rels
+            ArrayList<String> relationList = new ArrayList<>();                 // store the relation name
+
+            Object[] rr = rs.toArray();
+//            Relation[] ro = (Relation[]) rr;
+
+            ArrayList<Relation> lr = new ArrayList<>();
+//            Collections.addAll(lr,ro);      // convert Relation[] to ArrayList<Relation>
+
+            for (Object r : rr) {
+                Relation forceConvert = (Relation) r;
+                lr.add(forceConvert);
+                relationList.add(forceConvert.name());
+            }
+
+            // check if relationFromFormula is a subset of relationList
+            if (relationList.containsAll(relationFromFormula)){
+                // add relation to brr and make sure elements in brr are unique
+                for (Relation r : lr) {
+                    if (relationFromFormula.contains(r.name()) && !br.contains(r.name()) ) {
+                        brr.add(r);
+                        br.add(r.name());
+                    }
+                }
+                bf.add(f);
+            }
+        }
+        return new Pair<ArrayList<Formula>,ArrayList<Relation> >(bf, brr);
+    }
+
+    public static ArrayList<String> getRelationalVars(Formula f) {
+        ArrayList<String> ans = new ArrayList<>();      // store the final result
+        String copyOfFormula = f.toString();            // store the formula as the type of string
+        String[] separatedFormula = copyOfFormula.split("[\\)\\(\\s+\\~\\t]");  // separate the formula by " ", "(", ")", "~" and tab
+
+        for (String s : separatedFormula) {
+            if ( s.contains("this/") || s.contains("Int/") || s.contains("seq/") || s.contains("String") ) {
+                // make sure elements in ans are unique
+                if (!ans.contains(s)) {
+                    ans.add(s);
+                }
+            }
+        }
+        return ans;
+    }
 
     /** This caches the toString() output. */
     private String toStringCache = null;

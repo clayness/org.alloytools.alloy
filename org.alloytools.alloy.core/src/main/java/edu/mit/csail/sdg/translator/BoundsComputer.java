@@ -15,33 +15,23 @@
 
 package edu.mit.csail.sdg.translator;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.Err;
 import edu.mit.csail.sdg.alloy4.Pos;
-import edu.mit.csail.sdg.ast.Expr;
-import edu.mit.csail.sdg.ast.ExprBinary;
-import edu.mit.csail.sdg.ast.ExprConstant;
-import edu.mit.csail.sdg.ast.ExprList;
-import edu.mit.csail.sdg.ast.ExprUnary;
-import edu.mit.csail.sdg.ast.Sig;
+import edu.mit.csail.sdg.ast.*;
 import edu.mit.csail.sdg.ast.Sig.Field;
 import edu.mit.csail.sdg.ast.Sig.PrimSig;
 import edu.mit.csail.sdg.ast.Sig.SubsetSig;
-import edu.mit.csail.sdg.ast.Type;
-import kodkod.ast.Decls;
-import kodkod.ast.Expression;
-import kodkod.ast.Formula;
-import kodkod.ast.Relation;
-import kodkod.ast.Variable;
+import kodkod.ast.*;
 import kodkod.instance.Tuple;
 import kodkod.instance.TupleFactory;
 import kodkod.instance.TupleSet;
 import kodkod.instance.Universe;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Immutable; this class assigns each sig and field to some Kodkod relation or
@@ -77,20 +67,65 @@ final class BoundsComputer {
     /** Stores the lowerbound for each sig. */
     private final Map<Sig,TupleSet> lb = new LinkedHashMap<Sig,TupleSet>();
 
+    private final Command cmd;
+//
+//    private Pair<Formula,Relation> extraBase(List<Formula> formula, List<Relation> relation) {
+//        ArrayList bFormulas = new ArrayList();
+//        ArrayList bRelation = new ArrayList();
+//        for (Formula f: formula){
+//            Relation r = getRelation(f);
+//            if (relation.contains(r)){
+//                bFormulas = bFormulas.union(f);
+//                bRelation = bRelation.union(r);
+//            }
+//        }
+//        return new Pair<Formula,Relation>(bFormulas, bRelation);
+//    }
+
     // ==============================================================================================================//
+
+//    public <T> List<T> union(List<T> list1, T list2) {
+//        if (list1.contains(list2)){
+//            return list1;
+//        }else{
+//            list1.add(list2);
+//        }
+//
+//        return list1;
+//    }
 
     /**
      * Computes the lowerbound from bottom-up; it will also set a suitable initial
      * value for each sig's upperbound. Precondition: sig is not a builtin sig
      */
     private TupleSet computeLowerBound(List<Tuple> atoms, final PrimSig sig) throws Err {
+//        String l = null;
+//        try{
+//            FileInputStream fstream = new FileInputStream("/Users/yuchenxi/11.txt");
+//            DataInputStream in = new DataInputStream(fstream);
+//            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+//            String strLine;
+//            boolean find = false;
+//            while ((strLine = br.readLine()) != null && find == false)   {
+//                String[] tokens = strLine.split("@");
+////                System.out.println("token is "+ tokens[0]);
+////                System.out.println("token 2 is "+tokens[1]);
+//                if (tokens[0].equals(sig.toString() )){
+//                    find = true;
+//                    l = tokens[2];
+//                }
+//            }
+//            in.close();
+//        }catch (Exception e){
+//            System.err.println("Error: " + e.getMessage());
+//        }
         int n = sc.sig2scope(sig);
         TupleSet lower = factory.noneOf(1);
         for (PrimSig c : sig.children())
             lower.addAll(computeLowerBound(atoms, c));
         TupleSet upper = lower.clone();
         boolean isExact = sc.isExact(sig);
-        if (isExact || sig.isTopLevel())
+        if (isExact || sig.isTopLevel()) {
             for (n = n - upper.size(); n > 0; n--) {
                 Tuple atom = atoms.remove(atoms.size() - 1);
                 // If MUST<SCOPE and s is exact, then add fresh atoms to both
@@ -99,8 +134,12 @@ final class BoundsComputer {
                 // atoms to the UPPERBOUND.
                 if (isExact)
                     lower.add(atom);
+//                if (l.contains(atom.toString())){
+//                    upper.add(atom);
+//                }
                 upper.add(atom);
             }
+        }
         lb.put(sig, lower);
         ub.put(sig, upper);
         return lower;
@@ -295,11 +334,12 @@ final class BoundsComputer {
      * Computes the bounds for sigs/fields, then construct a BoundsComputer object
      * that you can query.
      */
-    private BoundsComputer(A4Reporter rep, A4Solution sol, ScopeComputer sc, Iterable<Sig> sigs) throws Err {
+    private BoundsComputer(A4Reporter rep, A4Solution sol, ScopeComputer sc, Iterable<Sig> sigs, Command cmd) throws Err {
         this.sc = sc;
         this.factory = sol.getFactory();
         this.rep = rep;
         this.sol = sol;
+        this.cmd = cmd;
         // Figure out the sig bounds
         final Universe universe = factory.universe();
         final int atomN = universe.size();
@@ -309,6 +349,10 @@ final class BoundsComputer {
         for (Sig s : sigs)
             if (!s.builtin && s.isTopLevel())
                 computeLowerBound(atoms, (PrimSig) s);
+//                lb.remove("this/Archietecture");
+//                TupleSet re = lb.get("this/Archietecture");
+//                re.remove("Archietecture$0");
+//                extraBase(cmd.formula.arg, sol.bounds.relations());
         for (Sig s : sigs)
             if (!s.builtin && s.isTopLevel())
                 computeUpperBound((PrimSig) s);
@@ -440,7 +484,7 @@ final class BoundsComputer {
      * Assign each sig and field to some Kodkod relation or expression, then set the
      * bounds.
      */
-    static void compute(A4Reporter rep, A4Solution sol, ScopeComputer sc, Iterable<Sig> sigs) throws Err {
-        new BoundsComputer(rep, sol, sc, sigs);
+    static void compute(A4Reporter rep, A4Solution sol, ScopeComputer sc, Iterable<Sig> sigs, Command cmd) throws Err {
+        new BoundsComputer(rep, sol, sc, sigs, cmd);
     }
 }

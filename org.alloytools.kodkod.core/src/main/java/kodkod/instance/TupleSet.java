@@ -21,13 +21,13 @@
  */
 package kodkod.instance;
 
-import java.util.AbstractSet;
-import java.util.Collection;
-import java.util.Iterator;
-
 import kodkod.util.ints.IntIterator;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.Ints;
+
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.Iterator;
 
 /**
  * Represents a set of {@link kodkod.instance.Tuple tuples} of a given arity,
@@ -58,7 +58,7 @@ public final class TupleSet extends AbstractSet<Tuple> implements Cloneable {
      * @throws NullPointerException universe = null
      * @throws IllegalArgumentException arity < 1
      */
-    TupleSet(Universe universe, int arity) {
+    public TupleSet(Universe universe, int arity) {
         if (arity < 1)
             throw new IllegalArgumentException("arity < 1");
         universe.factory().checkCapacity(arity);
@@ -103,7 +103,7 @@ public final class TupleSet extends AbstractSet<Tuple> implements Cloneable {
      * @throws IllegalArgumentException tupleIndeces.min() < 0 || tupleIndeces.max()
      *             >= this.universe.size()^arity
      */
-    TupleSet(Universe universe, int arity, IntSet tupleIndeces) {
+    public TupleSet(Universe universe, int arity, IntSet tupleIndeces) {
         if (arity < 1)
             throw new IllegalArgumentException("arity < 1");
         universe.factory().checkCapacity(arity);

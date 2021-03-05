@@ -171,7 +171,6 @@ public final class Instance implements Cloneable {
     /**
      * Returns the set of tuples assigned to the given relation by this Instance. If
      * the relation is not mapped by the model, null is returned.
-     *
      * @return this.tuples[relation]
      */
     public TupleSet tuples(Relation relation) {

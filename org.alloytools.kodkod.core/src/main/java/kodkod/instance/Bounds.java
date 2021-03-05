@@ -21,25 +21,18 @@
  */
 package kodkod.instance;
 
-import static java.util.Collections.unmodifiableMap;
-import static kodkod.util.ints.Ints.unmodifiableSequence;
-
-import java.util.AbstractSet;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import kodkod.ast.Expression;
 import kodkod.ast.IntConstant;
 import kodkod.ast.Relation;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.SparseSequence;
 import kodkod.util.ints.TreeSequence;
+
+import java.util.*;
+import java.util.Map.Entry;
+
+import static java.util.Collections.unmodifiableMap;
+import static kodkod.util.ints.Ints.unmodifiableSequence;
 
 /**
  * <p>
@@ -76,7 +69,7 @@ import kodkod.util.ints.TreeSequence;
 public final class Bounds implements Cloneable {
 
     private final TupleFactory             factory;
-    private final Map<Relation,TupleSet>   lowers, uppers;
+    public Map<Relation,TupleSet>           lowers, uppers;
     private final SparseSequence<TupleSet> intbounds;
     private final Set<Relation>            relations;
     private final Map<Object,Relation>     atom2rel;
@@ -242,6 +235,10 @@ public final class Bounds implements Cloneable {
         return unmodifiableMap(lowers);
     }
 
+    public Map<Relation, TupleSet> lowerBoundsM() {
+        return lowers;
+    }
+
     /**
      * Returns the set of tuples that r may contain (the upper bound on r's
      * contents). If r is not mapped by this, null is returned.
@@ -259,6 +256,10 @@ public final class Bounds implements Cloneable {
      */
     public Map<Relation,TupleSet> upperBounds() {
         return unmodifiableMap(uppers);
+    }
+
+    public Map<Relation, TupleSet> upperBoundsM() {
+        return uppers;
     }
 
     /**

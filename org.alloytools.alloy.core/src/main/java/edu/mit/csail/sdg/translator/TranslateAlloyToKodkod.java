@@ -15,11 +15,57 @@
 
 package edu.mit.csail.sdg.translator;
 
-import edu.mit.csail.sdg.alloy4.*;
+import static edu.mit.csail.sdg.alloy4.Util.tail;
+import static edu.mit.csail.sdg.ast.Sig.UNIV;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import edu.mit.csail.sdg.alloy4.A4Reporter;
+import edu.mit.csail.sdg.alloy4.ConstList;
+import edu.mit.csail.sdg.alloy4.ConstMap;
+import edu.mit.csail.sdg.alloy4.Env;
+import edu.mit.csail.sdg.alloy4.Err;
+import edu.mit.csail.sdg.alloy4.ErrorFatal;
+import edu.mit.csail.sdg.alloy4.ErrorSyntax;
+import edu.mit.csail.sdg.alloy4.ErrorType;
+import edu.mit.csail.sdg.alloy4.Pair;
+import edu.mit.csail.sdg.alloy4.Pos;
+import edu.mit.csail.sdg.alloy4.Util;
+import edu.mit.csail.sdg.ast.Command;
+import edu.mit.csail.sdg.ast.CommandScope;
 import edu.mit.csail.sdg.ast.Decl;
-import edu.mit.csail.sdg.ast.*;
+import edu.mit.csail.sdg.ast.Expr;
+import edu.mit.csail.sdg.ast.ExprBinary;
+import edu.mit.csail.sdg.ast.ExprCall;
+import edu.mit.csail.sdg.ast.ExprConstant;
+import edu.mit.csail.sdg.ast.ExprHasName;
+import edu.mit.csail.sdg.ast.ExprITE;
+import edu.mit.csail.sdg.ast.ExprLet;
+import edu.mit.csail.sdg.ast.ExprList;
+import edu.mit.csail.sdg.ast.ExprQt;
+import edu.mit.csail.sdg.ast.ExprUnary;
+import edu.mit.csail.sdg.ast.ExprVar;
+import edu.mit.csail.sdg.ast.Func;
+import edu.mit.csail.sdg.ast.Sig;
 import edu.mit.csail.sdg.ast.Sig.Field;
-import kodkod.ast.*;
+import edu.mit.csail.sdg.ast.Type;
+import edu.mit.csail.sdg.ast.VisitReturn;
+import kodkod.ast.BinaryExpression;
+import kodkod.ast.Decls;
+import kodkod.ast.ExprToIntCast;
+import kodkod.ast.Expression;
+import kodkod.ast.Formula;
+import kodkod.ast.IntConstant;
+import kodkod.ast.IntExpression;
+import kodkod.ast.IntToExprCast;
+import kodkod.ast.QuantifiedFormula;
+import kodkod.ast.Relation;
+import kodkod.ast.Variable;
 import kodkod.ast.operator.ExprOperator;
 import kodkod.engine.CapacityExceededException;
 import kodkod.engine.fol2sat.HigherOrderDeclException;
@@ -27,11 +73,6 @@ import kodkod.instance.Tuple;
 import kodkod.instance.TupleFactory;
 import kodkod.instance.TupleSet;
 import kodkod.util.ints.IntVector;
-
-import java.util.*;
-
-import static edu.mit.csail.sdg.alloy4.Util.tail;
-import static edu.mit.csail.sdg.ast.Sig.UNIV;
 
 /**
  * Translate an Alloy AST into Kodkod AST then attempt to solve it using Kodkod.
@@ -100,7 +141,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
      *            list)
      * @param cmd - the command to solve (must not be null)
      */
-    private TranslateAlloyToKodkod(A4Reporter rep, A4Options opt, Iterable<Sig> sigs, Command cmd) throws Err {
+    public TranslateAlloyToKodkod(A4Reporter rep, A4Options opt, Iterable<Sig> sigs, Command cmd) throws Err {
         this.unrolls = opt.unrolls;
         this.rep = (rep != null) ? rep : A4Reporter.NOP;
         this.cmd = cmd;
@@ -201,7 +242,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
     /**
      * Conjoin the constraints for "field declarations" and "fact" paragraphs
      */
-    private void makeFacts(Expr facts) throws Err {
+    public void makeFacts(Expr facts) throws Err {
         rep.debug("Generating facts...\n");
         // convert into a form that hopefully gives better unsat core
         facts = (new ConvToConjunction()).visitThis(facts);
@@ -378,6 +419,8 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
         return new ErrorType("Translation capacity exceeded.\n" + "In this scope, universe contains " + vec.get(0) + " atoms\n" + "and relations of arity " + vec.size() + " cannot be represented.\n" + "Visit http://alloy.mit.edu/ for advice on refactoring.");
     }
 
+    public A4Solution getFrame() { return frame; }
+
     private static A4Solution execute_greedyCommand(A4Reporter rep, Iterable<Sig> sigs, Command usercommand, A4Options opt) throws Exception {
         // FIXTHIS: if the next command has a "smaller scope" than the last
         // command, we would get a Kodkod exception...
@@ -518,7 +561,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
                 return execute_greedyCommand(rep, sigs, cmd, opt);
             tr = new TranslateAlloyToKodkod(rep, opt, sigs, cmd);
             tr.makeFacts(cmd.formula);
-            return tr.frame.secondsolve(rep, cmd, new Simplifier(), false,insOfSol);
+            return tr.frame.secondsolve(rep, cmd, new Simplifier(), false, insOfSol);
         } catch (UnsatisfiedLinkError ex) {
             throw new ErrorFatal("The required JNI library cannot be found: " + ex.toString().trim(), ex);
         } catch (CapacityExceededException ex) {
@@ -533,6 +576,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
                 throw new ErrorFatal("Unknown exception occurred: " + ex, ex);
         }
     }
+
     /**
      * Based on the specified "options", execute one command and return the
      * resulting A4Solution object.

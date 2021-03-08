@@ -3,14 +3,15 @@
     src/main/resources
     
 -buildpath: \
-	org.alloytools.kodkod.core;version=latest, \
+	org.alloytools.kodkod.core;version=latest,\
 	org.sat4j.core,\
 	org.alloytools.kodkod.nativesat.util;version=latest,\
 	org.alloytools.kodkod.nativesat.amd64-linux;version=latest,\
 	org.alloytools.kodkod.nativesat.x86-linux;version=latest,\
 	org.alloytools.kodkod.nativesat.x86-mac;version=latest,\
-	org.alloytools.kodkod.nativesat.x86-windows;version=latest, \
-	org.eclipse.jdt.annotation
+	org.alloytools.kodkod.nativesat.x86-windows;version=latest,\
+	org.eclipse.jdt.annotation,\
+	org.apache.commons.collections
 
 -testpath: \
 	osgi.enroute.junit.wrapper, \

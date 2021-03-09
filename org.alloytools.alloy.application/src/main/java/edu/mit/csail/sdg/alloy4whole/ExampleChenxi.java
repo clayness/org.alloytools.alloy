@@ -27,7 +27,6 @@ import kodkod.util.ints.IntSet;
 
 public final class ExampleChenxi {
 
-
     private static Options convert(A4Solution frame, A4Options opt) {
         Options retval = new Options();
         if (frame.getBitwidth() > 0)
@@ -55,6 +54,7 @@ public final class ExampleChenxi {
     public static void main(String[] args) throws Exception {
         A4Options options = new A4Options();
         options.solver = A4Options.SatSolver.SAT4J;
+        options.symmetry = 20;
 
         ArrayList<Integer> positive = new ArrayList<Integer>();
         HashMap<Relation,IntSet> reMap = new HashMap<Relation,IntSet>();
@@ -68,12 +68,8 @@ public final class ExampleChenxi {
         Module world = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filename);
 
         long startSolve = System.currentTimeMillis();
-        //first run
         Command command = world.getAllCommands().get(0);
-        // Execute the command
         System.out.println("============ Command " + command + ": ============");
-        System.out.println("1111111");
-        System.out.println("22222222");
 
         TranslateAlloyToKodkod tatk = new TranslateAlloyToKodkod(A4Reporter.NOP, options, world.getAllReachableSigs(), command);
         tatk.makeFacts(command.formula.and(world.getAllReachableFacts()));
@@ -90,12 +86,9 @@ public final class ExampleChenxi {
         long translTime = System.currentTimeMillis();
         Translation.Whole translation = Translator.translate(f, b, o);
         translTime = System.currentTimeMillis() - translTime;
-        Translation.Whole firstTranslation = translation;
 
         SATSolver cnf = translation.cnf();
         int primaryVars = translation.numPrimaryVariables();
-
-        translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
 
         boolean isSat = cnf.solve();
         long endSolve = System.currentTimeMillis();
@@ -104,22 +97,16 @@ public final class ExampleChenxi {
         Solution sol;
         ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
 
-        System.out.println("first solving time is" + translTime);
-
         HashMap<Relation,int[]> map = new HashMap<Relation,int[]>();
-        HashMap<Relation,int[]> ref = new HashMap<Relation,int[]>();
 
         int[] notModel = new int[primaryVars];
         ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
-        int[] track = new int[primaryVars];
-        double inf = Double.POSITIVE_INFINITY;
-        double min = inf;
+        double min = Double.POSITIVE_INFINITY;
 
         for (Relation re : b.relations()) {
             if (re.toString().contains(".")) {
                 final IntSet i = translation.primaryVariables(re);
                 map.put(re, i.toArray());
-                ref.put(re, i.toArray());
                 reMap.put(re, i);
                 if (min > i.min()) {
                     min = i.min();
@@ -127,7 +114,8 @@ public final class ExampleChenxi {
             }
         }
 
-        while (isSat) {
+        int c = 0;
+        for (; isSat; c++) {
             sol = Solution.satisfiable(stats, translation.interpret());
             solutionCollection.add(sol);
             System.out.println(sol.instance().relationTuples());
@@ -147,11 +135,11 @@ public final class ExampleChenxi {
             }
             cnf.addClause(notModel);
             //solve next one
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
             isSat = cnf.solve();
         }
         sol = Solver.unsat(translation, stats);
         translation = null;
+        System.out.printf("done iterating (%d)%n", c);
 
         for (int i : notModelHelp) {
             if (i > 0) {
@@ -176,21 +164,17 @@ public final class ExampleChenxi {
             m.setValue(a);
         }
 
+        System.out.println("first solving time is " + (System.currentTimeMillis() - startSolve));
         return used;
     }
 
     protected static void solve2(A4Options options, ArrayList<Integer> positive, HashMap<Relation,IntSet> reMap, Set<Relation> used) {
-        Translation.Whole firstTranslation;
         String filenames = "/Users/cstevens/Research/chenxi-code/testing/1.als";
         Module world = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filenames);
 
-        // pre-process before running second time
-
-        //second run
         System.out.println("start second run");
         long startSolve = System.currentTimeMillis();
         Command command = world.getAllCommands().get(0);
-        // Execute the command
         System.out.println("============ Run Second Command " + command + ": ============");
 
         TranslateAlloyToKodkod tatk = new TranslateAlloyToKodkod(A4Reporter.NOP, options, world.getAllReachableSigs(), command);
@@ -203,7 +187,6 @@ public final class ExampleChenxi {
         long translTime = System.currentTimeMillis();
         Translation.Whole translation = Translator.translate(f, b, o);
         translTime = System.currentTimeMillis() - translTime;
-        firstTranslation = translation;
 
         Set<Relation> relat = reMap.keySet();
         String s = relat.toString();
@@ -293,9 +276,9 @@ public final class ExampleChenxi {
         Solution sol;
         ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
 
-        System.out.println("second solving time is " + translTime);
         int[] notModel = new int[primaryVars];
-        while (isSat) {
+        int c = 0;
+        for (; isSat; c++) {
             sol = Solution.satisfiable(stats, translation.interpret());
             solutionCollection.add(sol);
             for (int i = 1; i <= primaryVars; i++) {
@@ -306,8 +289,11 @@ public final class ExampleChenxi {
             isSat = cnf.solve();
         }
 
-        int bbc = 0;
         sol = Solver.unsat(translation, stats);
         translation = null;
+
+        System.out.println("second solving time is " + (System.currentTimeMillis() - startSolve));
+
+        System.out.printf("done iterating (%d)%n", c);
     }
 }

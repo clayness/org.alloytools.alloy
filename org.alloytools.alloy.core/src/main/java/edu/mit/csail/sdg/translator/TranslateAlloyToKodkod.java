@@ -99,7 +99,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
      * If frame!=null, it stores the scope, bounds, and other settings necessary for
      * performing a solve.
      */
-    private final A4Solution                  frame;
+    final A4Solution                          frame;
 
     /**
      * If frame==null, it stores the mapping from each Sig/Field/Skolem/Atom to its
@@ -141,7 +141,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
      *            list)
      * @param cmd - the command to solve (must not be null)
      */
-    private TranslateAlloyToKodkod(A4Reporter rep, A4Options opt, Iterable<Sig> sigs, Command cmd) throws Err {
+    TranslateAlloyToKodkod(A4Reporter rep, A4Options opt, Iterable<Sig> sigs, Command cmd) throws Err {
         this.unrolls = opt.unrolls;
         this.rep = (rep != null) ? rep : A4Reporter.NOP;
         this.cmd = cmd;
@@ -242,7 +242,7 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
     /**
      * Conjoin the constraints for "field declarations" and "fact" paragraphs
      */
-    private void makeFacts(Expr facts) throws Err {
+    void makeFacts(Expr facts) throws Err {
         rep.debug("Generating facts...\n");
         // convert into a form that hopefully gives better unsat core
         facts = (new ConvToConjunction()).visitThis(facts);
@@ -307,7 +307,8 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
         private ConstList<Sig> growableSigs         = null;
         private A4Solution     partial              = null;
 
-        public GreedySimulator() {}
+        public GreedySimulator() {
+        }
 
         private TupleSet convert(TupleFactory factory, Expr f) throws Err {
             TupleSet old = ((A4TupleSet) (partial.eval(f))).debugGetKodkodTupleset();
@@ -444,10 +445,12 @@ public final class TranslateAlloyToKodkod extends VisitReturn<Object> {
                 }
 
                 @Override
-                public void resultSAT(Object command, long solvingTime, Object solution) {}
+                public void resultSAT(Object command, long solvingTime, Object solution) {
+                }
 
                 @Override
-                public void resultUNSAT(Object command, long solvingTime, Object solution) {}
+                public void resultUNSAT(Object command, long solvingTime, Object solution) {
+                }
             };
             // Form the list of commands
             List<Command> commands = new ArrayList<Command>();

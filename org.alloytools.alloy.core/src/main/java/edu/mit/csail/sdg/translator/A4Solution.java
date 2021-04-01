@@ -198,7 +198,7 @@ public final class A4Solution {
      * The list of Kodkod formulas; can be empty if unknown; once a solution is
      * solved we must not modify this anymore
      */
-    private ArrayList<Formula>                formulas    = new ArrayList<Formula>();
+    ArrayList<Formula>                        formulas    = new ArrayList<Formula>();
 
     /** The list of known Alloy4 sigs. */
     private SafeList<Sig>                     sigs;
@@ -1362,7 +1362,8 @@ public final class A4Solution {
                         t = pp.product(t);
                     }
                     kr2type(skolem, t);
-                } catch (Throwable ex) {} // Exception here is not fatal
+                } catch (Throwable ex) {
+                } // Exception here is not fatal
             }
 
             @Override
@@ -1446,11 +1447,13 @@ public final class A4Solution {
                     if (opt.coreMinimization == 0)
                         try {
                             p.minimize(new RCEStrategy(p.log()));
-                        } catch (Throwable ex) {}
+                        } catch (Throwable ex) {
+                        }
                     if (opt.coreMinimization == 1)
                         try {
                             p.minimize(new HybridStrategy(p.log()));
-                        } catch (Throwable ex) {}
+                        } catch (Throwable ex) {
+                        }
                     rep.minimized(cmd, i, p.highLevelCore().size());
                 }
                 for (Iterator<TranslationRecord> it = p.core(); it.hasNext();) {

@@ -102,7 +102,8 @@ public final class Solver implements KodkodSolver {
      * @see kodkod.engine.KodkodSolver#free()
      */
     @Override
-    public void free() {}
+    public void free() {
+    }
 
     /**
      * Attempts to satisfy the given {@code formula} and {@code bounds} with respect
@@ -236,7 +237,7 @@ public final class Solver implements KodkodSolver {
      * @param stats translation / solving stats
      * @return the result of solving an unsat formula.
      */
-    static Solution unsat(Translation.Whole translation, Statistics stats) {
+    public static Solution unsat(Translation.Whole translation, Statistics stats) {
         final SATSolver cnf = translation.cnf();
         final TranslationLog log = translation.log();
         if (cnf instanceof SATProver && log != null) {

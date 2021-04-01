@@ -81,8 +81,7 @@ public final class ExampleUsingTheCompiler {
                 System.out.flush();
             }
         };
-        //        filename = args[1];
-        String filename = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/hh.als";
+        String filename = args[1];
         //        String filename = "/Users/yuchenxi/Downloads/G-Play/ICC2.als";
         // Parse+typecheck the model
         System.out.println("=========== Parsing+Typechecking " + filename + " =============");
@@ -250,8 +249,8 @@ public final class ExampleUsingTheCompiler {
             //            }
         }
 
-        String filenames = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/b.als";
-        //        filenames = args[2];
+        //String filenames = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/b.als";
+        String filenames = args[2];
         world = CompUtil.parseEverything_fromFile(rep, null, filenames);
 
         // pre-process before running second time

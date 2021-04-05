@@ -15,11 +15,6 @@
 
 package edu.mit.csail.sdg.alloy4whole;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.ErrorWarning;
 import edu.mit.csail.sdg.alloy4viz.VizGUI;
@@ -39,11 +34,13 @@ import kodkod.engine.fol2sat.Translation;
 import kodkod.engine.fol2sat.Translator;
 import kodkod.engine.satlab.SATSolver;
 import kodkod.instance.Bounds;
+import kodkod.instance.Instance;
 import kodkod.instance.Tuple;
 import kodkod.instance.TupleSet;
 import kodkod.util.ints.IntSet;
 
-//import org.alloytools.alloy.core.src.man.java.edu.mit.csail.sdg.alloy4.A4Reporter;
+import java.io.*;
+import java.util.*;
 
 /**
  * This class demonstrates how to access Alloy4 via the compiler methods.
@@ -60,12 +57,10 @@ public final class ExampleUsingTheCompiler {
      */
 
     public static void main(String[] args) throws Exception {
-
         // The visualizer (We will initialize it to nonnull when we visualize an
         // Alloy solution)
         VizGUI viz = null;
-
-        //        String filename, filenames;
+//        String filename, filenames;
 
         // Alloy4 sends diagnostic messages and progress reports to the
         // A4Reporter.
@@ -77,14 +72,16 @@ public final class ExampleUsingTheCompiler {
             // it to System.out
             @Override
             public void warning(ErrorWarning msg) {
-                System.out.print("Relevance Warning:\n" + (msg.toString().trim()) + "\n\n");
+//                System.out.print("Relevance Warning:\n" + (msg.toString().trim()) + "\n\n");
                 System.out.flush();
             }
         };
         String filename = args[0];
-        //        String filename = "/Users/yuchenxi/Downloads/G-Play/ICC2.als";
+//        String filename = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/b.als";
+//        String filename = "/Users/yuchenxi/Downloads/G-Play/ICC2.als";
+//        String filename = "/Users/yuchenxi/1.als";
         // Parse+typecheck the model
-        System.out.println("=========== Parsing+Typechecking " + filename + " =============");
+//        System.out.println("=========== Parsing+Typechecking " + filename + " =============");
         Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
 
         // Choose some default options for how you want to execute the
@@ -95,28 +92,53 @@ public final class ExampleUsingTheCompiler {
 
         ArrayList<A4Solution> sols = new ArrayList<A4Solution>();
         ArrayList<Integer> positive = new ArrayList<Integer>();
+        ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
 
         Translation.Whole firstTranslation;
         Bounds firstBounds;
 
-        HashMap<Relation,IntSet> reMap = new HashMap<Relation,IntSet>();
-        HashMap<String,Integer> map = new HashMap<String,Integer>();
-        HashMap<Relation,int[]> ref = new HashMap<Relation,int[]>();
+        HashMap<Relation,IntSet> reMap = new HashMap<Relation, IntSet>();
+        HashMap<String,Integer> map = new HashMap<String, Integer>();
+        HashMap<Integer,String> tupleLow = new HashMap<Integer, String>();
+        HashMap<Relation,int[]> ref = new HashMap<Relation, int[]>();
 
         Set<Relation> used = null;
-        ArrayList<String> lowb = new ArrayList<String>();
+        ArrayList<String> uAtoms = new ArrayList<String>();
+        ArrayList<String> unary = new ArrayList<String>();
+        ArrayList<String> lAtoms = new ArrayList<String>();
+        ArrayList<String> lunary = new ArrayList<String>();
+        Formula formulaSet = null;
 
         long startSolve = System.currentTimeMillis();
 
-        //first run
+        boolean empty = true;
+        StringBuilder sb = new StringBuilder();
+        FileWriter writer = new FileWriter("test.csv",true);
+
+        BufferedReader br = new BufferedReader(new FileReader("test.csv"));
+        if (br.readLine() != null) {
+            empty = false;
+        }
+        if (empty){
+            String columnNamesList = "specification,Alloy 5 get first solution,Alloy 5 get entire solutions,Titanium adjust bounds,Titanium solving CNF,Titanium get first solution,Titanium get entire solution,Opt adjust bounds,Opt solving CNF,Opt get first solution,Opt get entire solution";
+            sb.append(columnNamesList +"\n");
+            sb.append("1"+",");
+        } else {
+            sb.append("1"+",");
+        }
+//        String columnNamesList = "specification,Alloy 5 get first solution,Alloy 5 get entire solutions,Titanium adjust bounds,Titanium solving CNF,Titanium get first solution,Titanium get entire solution,Opt adjust bounds,Opt solving CNF,Opt get first solution,Opt get entire solution";
+//        sb.append(columnNamesList +"\n");
+//        sb.append("1"+",");
+
+        //first run for Alloy 5
         for (Command command : world.getAllCommands()) {
             // Execute the command
-            System.out.println("============ Command " + command + ": ============");
+//            System.out.println("============ Command " + command + ": ============");
 
             Translation.Whole translation;
-            long translTime;
+            long              translTime;
 
-            A2KConverter a2K = new A2KConverter(world, rep, world.getAllReachableSigs(), command, options);
+            A2KConverter a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
             Formula f = a2K.getFormula();
             Bounds b = a2K.getBounds();
             Set<Relation> relations = b.relations();
@@ -125,7 +147,7 @@ public final class ExampleUsingTheCompiler {
             Options o = a2K.getOptions();
 
             translTime = System.currentTimeMillis();
-            translation = Translator.translate(f, b, o);
+            translation = Translator.translate(f,b,o);
             translTime = System.currentTimeMillis() - translTime;
             firstTranslation = translation;
 
@@ -136,13 +158,11 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             long endSolve = System.currentTimeMillis();
-            System.out.println("first solving time is" + (-startSolve + endSolve));
+//            System.out.println("first solving time is" + (-startSolve+endSolve));
+//            sb.append(String.valueOf((-startSolve+endSolve))+",");
 
             Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
             Solution sol;
-            ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
-
-            System.out.println("first translation time is" + translTime);
 
             int[] notModel = new int[primaryVars];
             ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
@@ -152,55 +172,43 @@ public final class ExampleUsingTheCompiler {
 
             int pos = 1;
             for (Relation re : b.relations()) {
-                if (re.toString().contains("this") && b.lowerBound(re).size() != b.upperBound(re).size()) {
+                if (re.toString().contains("this")){
                     TupleSet atoms = b.upperBound(re);
-                    for (Object i : atoms) {
-                        lowb.add(i.toString());
-                        map.put(i.toString(), pos);
-
-                        Translation.Whole translationForlow;
-                        translationForlow = Translator.translate(f, b, o);
-                        SATSolver cnfForLow = translationForlow.cnf();
-                        translationForlow.options().reporter().solvingCNF(primaryVars, cnfForLow.numberOfVariables(), cnfForLow.numberOfClauses());
-
-
-                        int[] not = {
-                                     -pos
-                        };
-                        cnfForLow.addClause(not);
-                        translationForlow.options().reporter().solvingCNF(primaryVars, cnfForLow.numberOfVariables(), cnfForLow.numberOfClauses());
-                        boolean sat = cnfForLow.solve();
-                        if (sat) {
-                            lowb.remove(i.toString());
+                    TupleSet lowerA = b.lowerBound(re);
+                    for (Object i : atoms){
+                        if (!lowerA.contains(i)){
+                            String head = re.name();
+                            String body = "#";
+                            String key = head+body+i.toString();
+                            map.put(key,pos);
+                            tupleLow.put(pos,key);
+                            pos++;
                         }
-
-                        pos++;
                     }
                 }
-                if (re.toString().contains(".")) {
+                if (re.toString().contains(".")){
                     final IntSet i = translation.primaryVariables(re);
-                    reMap.put(re, i);
-                    if (min > i.min()) {
+                    reMap.put(re,i);
+                    if (min > i.min()){
                         min = i.min();
                     }
                 }
             }
-
-            while (isSat) {
+            System.out.println("111");
+            while (isSat){
                 sol = Solution.satisfiable(stats, translation.interpret());
-                solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
-                    int cur = notModel[i - 1];
+                    int cur = notModel[i-1];
                     int abs = Math.abs(cur);
 
-                    if (abs >= min) {
-                        if (!notModelHelp.contains(cur) && !notModelHelp.contains(-cur)) {
+                    if (abs >= min ){
+                        if (!notModelHelp.contains(cur) && !notModelHelp.contains(-cur)){
                             notModelHelp.add(cur);
                         }
-                        if (notModelHelp.contains(abs) && cur < 0) {
+                        if (notModelHelp.contains(abs) && cur < 0){
                             int index = notModelHelp.indexOf(abs);
-                            notModelHelp.set(index, cur);
+                            notModelHelp.set(index,cur);
                         }
                     }
                 }
@@ -211,316 +219,553 @@ public final class ExampleUsingTheCompiler {
             }
             sol = Solver.unsat(translation, stats);
             translation = null;
-            System.out.println("set size is " + solutionCollection.size());
+//            System.out.println("set size is " + solutionCollection.size());
+//            sb.append(String.valueOf((-startSolve+endSolve))+",");
 
-
-            for (int i : notModelHelp) {
-                if (i > 0) {
+            for (int i : notModelHelp){
+                if (i > 0){
                     positive.add(i);
                 }
-                for (Map.Entry<String,Integer> m : map.entrySet()) {
-                    if (m.getValue() == -i && i < 0) {
+                for (Map.Entry<String,Integer> m : map.entrySet()){
+                    if (m.getValue() == -i && i < 0){
                         String key = m.getKey();
-                        map.put(key, i);
+                        map.put(key,i);
                     }
                 }
             }
-
-
-            // can delete
-            //            for (Map.Entry<Relation,int[]> m : map.entrySet()){
-            //                ArrayList<Integer> temp = new ArrayList<Integer>();
-            //                for (int i : positive){
-            //                    int[] b1 = m.getValue();
-            ////                    if (Arrays.asList(b1).contains(i)){
-            ////                        temp.add(i);
-            ////                    }
-            //                    for (int i1 : b1){
-            //                        if (i1 == i){
-            //                            temp.add(i);
-            //                        }
-            //                    }
-            //                }
-            //                int[] a = new int[temp.size()];
-            //                for (int i = 0; i < a.length;i++){
-            //                    a[i] = temp.get(i);
-            //                }
-            //                m.setValue(a);
-            //            }
         }
 
-        //String filenames = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/b.als";
-        String filenames = args[1];
-        world = CompUtil.parseEverything_fromFile(rep, null, filenames);
-
-        // pre-process before running second time
-
-
-        //second run
-        System.out.println("start second run");
+        // first run for opt
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
             // Execute the command
-            System.out.println("============ Run Second Command " + command + ": ============");
+//            System.out.println("============ Command " + command + ": ============");
 
             Translation.Whole translation;
-            long translTime;
+            long              translTime;
 
-            //            long startSolve = System.currentTimeMillis();
+            A2KConverter a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
+            Formula f = a2K.getFormula();
+            Bounds b = a2K.getBounds();
+            used = b.relations();
+            Options o = a2K.getOptions();
+            formulaSet = f;
 
-            A2KConverter a2K = new A2KConverter(world, rep, world.getAllReachableSigs(), command, options);
+            translTime = System.currentTimeMillis();
+            translation = Translator.translate(f,b,o);
+            translTime = System.currentTimeMillis() - translTime;
+
+            SATSolver cnf = translation.cnf();
+            int primaryVars = translation.numPrimaryVariables();
+
+            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+
+            boolean isSat = cnf.solve();
+            long endSolve = System.currentTimeMillis();
+//            System.out.println("first solving time is" + (-startSolve+endSolve));
+
+            Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
+            Solution sol;
+
+            int[] notModel = new int[primaryVars];
+            ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
+
+            boolean firstSol = true;
+            while (isSat){
+                sol = Solution.satisfiable(stats, translation.interpret());
+                solutionCollection.add(sol);
+                for (int i = 1; i <= primaryVars; i++) {
+                    notModel[i - 1] = cnf.valueOf(i) ? -i : i;
+                    int cur = notModel[i-1];
+                    int abs = Math.abs(cur);
+
+                    if (!notModelHelp.contains(cur) && !notModelHelp.contains(-cur)){
+                        notModelHelp.add(cur);
+                    }
+                    if (notModelHelp.contains(abs) && cur < 0){
+                        int index = notModelHelp.indexOf(abs);
+                        notModelHelp.set(index,cur);
+                    }
+                }
+                ArrayList<Integer> help = new ArrayList<Integer>();
+                for (int i = 0; i < notModelHelp.size();i++){
+                    if (notModelHelp.get(i) > 0){
+                        help.add(notModelHelp.get(i));
+                    }
+                }
+                int[] notModel1 = new int[help.size()];
+                for (int i = 0; i < help.size(); i++){
+                    notModel1[i] = help.get(i);
+                }
+                cnf.addClause(notModel1);
+                Instance instance = sol.instance();
+                for (Relation r : b.relations()){
+                    boolean firstRel = true;
+                    if (r.toString().contains("this/") && !r.toString().contains(".")){
+                        String s = instance.tuples(r).toString();
+                        s.split(",");
+                        String[] split = s.split("\\[+|\\]+");
+                        for (String s1 : split){
+                            s1.toString();
+                            if (s1.contains(r.toString().split("this/")[1])){
+                                if (!unary.contains(s1)){
+                                    unary.add(s1);
+                                }
+                            }
+                        }
+                    }
+                    if (r.toString().contains("this/") && r.toString().contains(".")){
+                        String s = instance.tuples(r).toString();
+                        String[] split = s.split("\\[+|\\]+");
+                        for (String s1 : split){
+                            s1.toString();
+                            if (!s1.equals(", ") && !s1.equals("") && instance.tuples(r).toString().contains(s1)){
+                                if (!uAtoms.contains(s1)){
+                                    uAtoms.add(s1);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                //solve next one
+                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+                isSat = cnf.solve();
+                firstSol = false;
+            }
+            sol = Solver.unsat(translation, stats);
+            translation = null;
+//            System.out.println("set size is " + solutionCollection.size());
+
+            // get lower bounds
+
+            for (int i = 1; i < primaryVars; i++){
+                long start = System.currentTimeMillis();
+                a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
+                f = a2K.getFormula();
+                b = a2K.getBounds();
+                o = a2K.getOptions();
+
+                translTime = System.currentTimeMillis();
+                translation = Translator.translate(f,b,o);
+                translTime = System.currentTimeMillis() - translTime;
+                startSolve = System.currentTimeMillis();
+                cnf = translation.cnf();
+                primaryVars = translation.numPrimaryVariables();
+                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+                int[] ad = {-i};
+                cnf.addClause(ad);
+
+                isSat = cnf.solve();
+                if (!isSat){
+                    String s = tupleLow.get(i).split("#")[1];
+                    String so = s.toString().split("\\[|\\]")[1];
+                    lAtoms.add(so);
+                }
+            }
+        }
+
+//        String filenames = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/hh.als";
+        String filenames = args[1];
+//        String filenames = "/Users/yuchenxi/1m.als";
+        world = CompUtil.parseEverything_fromFile(rep, null, filenames);
+
+        // pre-process before running second time
+        long startsSolve = System.currentTimeMillis();
+        for (Command command : world.getAllCommands()) {
+            // Execute the command
+            System.out.println("============ Command " + command + ": ============");
+
+            Translation.Whole translation;
+            long              translTime;
+
+            A2KConverter a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
+            Formula f = a2K.getFormula();
+            Bounds b = a2K.getBounds();
+            used = b.relations();
+            Options o = a2K.getOptions();
+
+            translTime = System.currentTimeMillis();
+            translation = Translator.translate(f,b,o);
+            translTime = System.currentTimeMillis() - translTime;
+
+            SATSolver cnf = translation.cnf();
+            int primaryVars = translation.numPrimaryVariables();
+
+            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+
+            boolean isSat = cnf.solve();
+
+            long endSolve = System.currentTimeMillis();
+//            System.out.println("first solving time is" + (-startsSolve+endSolve));
+            sb.append(String.valueOf((-startSolve+endSolve))+",");
+            Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
+            Solution sol;
+
+            int[] notModel = new int[primaryVars];
+            ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
+
+            boolean e = true;
+            while (isSat){
+                sol = Solution.satisfiable(stats, translation.interpret());
+//                solutionCollection.add(sol);
+                for (int i = 1; i <= primaryVars; i++) {
+                    notModel[i - 1] = cnf.valueOf(i) ? -i : i;
+                }
+                cnf.addClause(notModel);
+                //solve next one
+                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+                isSat = cnf.solve();
+            }
+            sol = Solver.unsat(translation, stats);
+            translation = null;
+//            System.out.println("set size is " + solutionCollection.size());
+            sb.append(String.valueOf((-startSolve+System.currentTimeMillis()))+",");
+        }
+
+        // titanium
+        startSolve = System.currentTimeMillis();
+        for (Command command : world.getAllCommands()) {
+            // Execute the command
+//            System.out.println("============ Run Second Command " + command + ": ============");
+
+            Translation.Whole translation;
+            long              translTime;
+
+//            long startSolve = System.currentTimeMillis();
+
+            A2KConverter a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
             Formula f = a2K.getFormula();
             Bounds b = a2K.getBounds();
             Options o = a2K.getOptions();
 
-            translTime = System.currentTimeMillis();
-            translation = Translator.translate(f, b, o);
-            translTime = System.currentTimeMillis() - translTime;
-
-            Set<Relation> relat = reMap.keySet();
-            String s = relat.toString();
+            ArrayList<String> uAtom = new ArrayList<String>();
+            ArrayList<String> unarys = new ArrayList<String>();
 
             long adjTime = System.currentTimeMillis();
-            int add = 0;
-            ArrayList<Integer> less = new ArrayList<Integer>();
-            for (Relation rs : b.relations()) {
-                if (rs.toString().contains(".")) {
-                    for (Relation sr : used) {
-                        if (sr.name().equals(rs.name())) {
-                            if (reMap.keySet().contains(sr)) {
-                                IntSet first = reMap.get(sr);
-                                int fMin = first.min();
-                                int fMax = first.max();
-                                int sMin = translation.primaryVariables(rs).min();
-                                add = sMin - fMin;
 
-                                for (int i = 0; i < positive.size(); i++) {
-                                    if (positive.get(i) <= fMax && positive.get(i) >= fMin) {
-                                        positive.set(i, (positive.get(i) + add));
-                                    }
+            boolean firstSol = true;
+            HashMap<String,List<String>> lowers = new HashMap<String,List<String>>();
+            for (Solution s : solutionCollection){
+                Instance instance = s.instance();
+                for (Relation r : b.relations()){
+                    ArrayList<String> mapTuple = new ArrayList<String>();
+                    if (!used.toString().contains(r.name())){
+                        continue;
+                    }
+                    boolean firstRel = true;
+                    ArrayList<String> tep = new ArrayList<String>();
+                    ArrayList<String> btep = new ArrayList<String>();
+                    if (r.toString().contains("this/") && !r.toString().contains(".")){
+                        String ss = instance.tuples(r.name()).toString();
+                        String[] split = ss.split("\\[+|\\]+");
+                        for (String s1 : split){
+                            s1.toString();
+                            if (s1.contains(r.toString().split("this/")[1])){
+                                if (!unarys.contains(s1)){
+                                    unarys.add(s1);
                                 }
-
+                                if (firstSol){
+                                    mapTuple.add(s1);
+                                }
+                                if (!firstSol){
+                                    tep.add(s1);
+                                }
                             }
+                        }
+                        if (firstSol){
+                            lowers.put(r.name(),mapTuple);
+                        }
+                        if (!firstSol){
+                            List<String> te = lowers.get(r.name());
+                            te.retainAll(tep);
+                            lowers.put(r.name(),te);
+                        }
+                    }
+                    if (r.toString().contains("this/") && r.toString().contains(".") ){
+                        String ss = instance.tuples(r.name()).toString();
+                        String[] split = ss.split("\\[+|\\]+");
+                        for (String s1 : split){
+                            s1.toString();
+                            if (!s1.equals(", ") && !s1.equals("") && instance.tuples(r.name()).toString().contains(s1)){
+                                if (!uAtom.contains(s1)){
+                                    uAtom.add(s1);
+                                }
+                                if (firstSol){
+                                    mapTuple.add(s1);
+                                }
+                                if (!firstSol){
+                                    btep.add(s1);
+                                }
+                            }
+                        }
+                        if (firstSol){
+                            lowers.put(r.name(),mapTuple);
+                        }
+                        if (!firstSol){
+                            List<String> te = lowers.get(r.name());
+                            te.retainAll(btep);
+                            lowers.put(r.name(),te);
+                        }
+                    }
+                }
+                firstSol = false;
+            }
+
+            List<String> f2 = Arrays.asList(f.toString().split("\\&&+"));
+            List<String> f1 = Arrays.asList(formulaSet.toString().split("\\&&+"));
+            ArrayList<Relation> effected = new ArrayList<Relation>();
+            ArrayList<Relation> notEffected = new ArrayList<Relation>();
+
+            for (String sf : f2){
+                if (!f1.contains(sf)){
+                    for (Relation r : b.relations()){
+                        if (sf.contains(r.name()) && !effected.contains(r.name())){
+                            effected.add(r);
                         }
                     }
                 }
             }
-            int pos1 = 1;
-            ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
-            //            for (Relation rs : b.relations()){
-            //                if (rs.toString().contains("this")){
-            //                    TupleSet atoms = b.upperBound(rs);
-            //                    for (Object i : atoms){
-            //                        if (map.containsKey(i.toString()) && map.get(i.toString()) > 0  && i.toString().contains(",")){
-            //                            notModelHelp.add(pos1);
-            //                        }
-            //                        if (!map.containsKey(i.toString()) && i.toString().contains(",")){
-            //                            notModelHelp.add(pos1);
-            //                        }
-            //                        pos1++;
-            //                    }
-            //                }
-            //            }
-
-            Map<Relation,TupleSet> lb = b.lowerBounds();
-            if (b.relations().size() >= used.size()) {
-                for (Relation rs : b.relations()) {
-                    TupleSet newB = new TupleSet(b.universe(), rs.arity());
-                    if (rs.toString().contains("this") && b.lowerBound(rs).size() != b.upperBound(rs).size()) {
-                        TupleSet atoms = b.upperBound(rs);
-                        for (Object i : atoms) {
-                            if (map.containsKey(i.toString()) && map.get(i.toString()) > 0 && i.toString().contains(",")) {
-                                notModelHelp.add(pos1);
-                            }
-                            if (!map.containsKey(i.toString()) && i.toString().contains(",")) {
-                                notModelHelp.add(pos1);
-                            }
-                            pos1++;
-                            if (lowb.contains(i.toString())) {
-                                newB.add((Tuple) i);
-                            }
-                        }
-                    }
-                    lb.put(rs, newB);
+            for (Relation r : b.relations()){
+                if (!effected.contains(r) && r.toString().contains("this/")){
+                    notEffected.add(r);
                 }
             }
 
-            int pos2 = 1;
-            if (b.relations().size() < used.size()) {
-                for (Relation rs : b.relations()) {
-                    if (rs.toString().contains("this") && b.upperBound(rs).size() != b.lowerBound(rs).size()) {
-                        TupleSet atoms = b.upperBound(rs);
-                        for (Object i : atoms) {
-                            if (map.containsKey(i.toString()) && map.get(i.toString()) > 0 && i.toString().contains(",")) {
-                                notModelHelp.add(pos2);
+            Map<Relation, TupleSet> ub = b.upperBoundsM();
+            Map<Relation, TupleSet> lb = b.lowerBoundsM();
+            if (b.relations().size() <= used.size()){
+                for (Relation r : notEffected){
+                    TupleSet newB = new TupleSet(b.universe(),r.arity());
+                    if (!r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        String relN = r.name().toString().split("this/")[1];
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[|\\]")[1];
+                            if (unarys.contains(split)){
+                                newB.add((Tuple) uo);
                             }
-                            if (!map.containsKey(i.toString()) && i.toString().contains(",")) {
-                                notModelHelp.add(pos2);
-                            }
-                            pos2++;
                         }
+                        ub.put(r,newB);
+                    }
+                    if (r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[+|\\]+")[1];
+                            if (uAtom.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+                        }
+                        ub.put(r,newB);
                     }
                 }
             }
 
-            //            if (b.relations().size() < used.size()){
-            //                for (Relation rs : b.relations()){
-            //                    if (rs.toString().contains(".")){
-            //                        for (Relation sr : used){
-            //                            if (sr.name().equals(rs.name())){
-            //                                if (reMap.keySet().contains(sr)){
-            //                                    IntSet first = reMap.get(sr);
-            //                                    int fMin = first.min();
-            //                                    int fMax = first.max();
-            //                                    int sMin = translation.primaryVariables(rs).min();
-            //                                    add = sMin - fMin;
-            //                                    if (positive.size()>0){
-            //                                        for (int i = 0; i < positive.size();i++){
-            //                                            if (positive.get(i) <= fMax && positive.get(i)  >= fMin){
-            //                                                positive.set(i, (positive.get(i)+add));
-            //                                            }
-            //                                        }
-            //                                    }
-            //                                }
-            //
-            //                                int[] second = translation.primaryVariables(rs).toArray();
-            //                                if (positive.size()>0){
-            //                                    for (int i = 0; i < second.length; i++){
-            //                                        if (positive.contains(second[i])){
-            //                                            if (second[i] == translation.primaryVariables(rs).min()){
-            //                                                less.add(translation.primaryVariables(rs).max());
-            //                                            }else {
-            //                                                less.add(second[i]);
-            //                                            }
-            //                                        }
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            }
-
-            //            if (b.relations().size() < used.size()){
-            //                for (Relation rs : b.relations()){
-            //                    if (rs.toString().contains(".")){
-            //                        for (Relation sr : used){
-            //                            if ((sr.name().equals(rs.name())) && (sr.name().contains("."))){
-            //                                int[] second = translation.primaryVariables(rs).toArray();
-            //                                for (int i = 0; i < second.length; i++){
-            //                                    if (positive.contains(second[i])){
-            //                                        if (second[i] == translation.primaryVariables(rs).min()){
-            //                                            less.add(translation.primaryVariables(rs).min());
-            //                                        }else {
-            //                                            less.add(second[i]);
-            //                                        }
-            //
-            //                                    }
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            }
-
-
-            //            if (b.relations().size() >= used.size()){
-            //                for (Relation rs : b.relations()){
-            //                    if (rs.toString().contains(".")){
-            //                        for (Relation sr : used){
-            //                            if ((!sr.name().equals(rs.name())) && (sr.name().contains("."))){
-            //                                int[] second = translation.primaryVariables(rs).toArray();
-            //                                for (int i = 0; i < second.length; i++){
-            //                                    positive.add(second[i]);
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            }
-
-
-            //            if (b.relations().size() > used.size()){
-            //                for (Relation rs : b.relations()){
-            //                    if (rs.toString().contains(".")){
-            //                        for (Relation sr : used){
-            //                            if (sr.name().equals(rs.name())){
-            //                                if (reMap.keySet().contains(sr)){
-            //                                    IntSet first = reMap.get(sr);
-            //                                    int fMin = first.min();
-            //                                    int fMax = first.max();
-            //                                    int sMin = translation.primaryVariables(rs).min();
-            //                                    add = sMin - fMin;
-            //
-            //                                    for (int i = 0; i < positive.size();i++){
-            //                                        if (positive.get(i) <= fMax && positive.get(i)  >= fMin){
-            //                                            positive.set(i, (positive.get(i)+add));
-            //                                        }
-            //                                    }
-            //                                }
-            //                            }
-            //                            if ((!sr.name().equals(rs.name())) && (sr.name().contains("."))){
-            //                                int[] second = translation.primaryVariables(rs).toArray();
-            //                                for (int i = 0; i < second.length; i++){
-            //                                    positive.add(second[i]);
-            //                                }
-            //                            }
-            //                        }
-            //                    }
-            //                }
-            //            }
-
-            //            int[] solved;
-            //            if (b.relations().size() > used.size()){
-            //                solved = new int[positive.size()];
-            //                for (int q = 0; q < solved.length; q++){
-            //                    solved[q] = positive.get(q);
-            //                }
-            //            }else{
-            //                solved = new int[less.size()];
-            //                for (int q = 0; q < solved.length; q++){
-            //                    solved[q] = less.get(q);
-            //                }
-            //            }
-            int[] solved = new int[notModelHelp.size()];
-            for (int i = 0; i < notModelHelp.size(); i++) {
-                solved[i] = notModelHelp.get(i);
+            if (b.relations().size() >= used.size()){
+                for (Relation r : notEffected){
+                    TupleSet newB = new TupleSet(b.universe(),r.arity());
+                    if (!r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        String relN = r.name().toString().split("this/")[1];
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[|\\]")[1];
+                            List<String> atoms = lowers.get(r.name());
+                            if (atoms.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+//                            if (lunary.contains(split)){
+//                                newB.add((Tuple) uo);
+//                            }
+                        }
+                        lb.put(r,newB);
+                    }
+                    if (r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[+|\\]+")[1];
+                            List<String> atoms = lowers.get(r.name());
+                            if (atoms.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+//                            if (lAtom.contains(split)){
+//                                newB.add((Tuple) uo);
+//                            }
+                        }
+                        lb.put(r,newB);
+                    }
+                }
             }
 
             long endAdj = System.currentTimeMillis();
-            System.out.println("bounds adjustment time is " + (endAdj - adjTime));
+//            System.out.println("adjusting bounds time is " + (adjTime-startSolve));
+            sb.append(String.valueOf((endAdj - startSolve))+",");
 
-            long cnfSolvingTime = System.currentTimeMillis();
+            translTime = System.currentTimeMillis();
+            translation = Translator.translate(f,b,o);
+            translTime = System.currentTimeMillis() - translTime;
+
+            long cnfSolving = System.currentTimeMillis();
+
             SATSolver cnf = translation.cnf();
             int primaryVars = translation.numPrimaryVariables();
 
-            cnf.addClause(solved);
+            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+
+            boolean isSat = cnf.solve();
+            long endSolve = System.currentTimeMillis();
+//            System.out.println("time for getting first sol is "+(endSolve-startSolve));
+            sb.append(String.valueOf((-cnfSolving+endSolve))+",");
+//            System.out.println("time for cnf solving is" + (endSolve-cnfSolving));
+            sb.append(String.valueOf((-startSolve+endSolve))+",");
+
+            Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
+            Solution sol;
+
+            int[] notModel = new int[primaryVars];
+
+            while (isSat){
+                sol = Solution.satisfiable(stats, translation.interpret());
+//                solutionCollection.add(sol);
+                for (int i = 1; i <= primaryVars; i++) {
+                    notModel[i - 1] = cnf.valueOf(i) ? -i : i;
+                }
+                cnf.addClause(notModel);
+                //solve next one
+                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+                isSat = cnf.solve();
+            }
+
+            endSolve = System.currentTimeMillis();
+//            System.out.println("time for getting all sol is " + (endSolve-startSolve));
+//            System.out.println(solutionCollection.size());
+            sb.append(String.valueOf((-startSolve+endSolve))+",");
+            sol = Solver.unsat(translation, stats);
+            translation = null;
+        }
+
+        //second run
+//        System.out.println("start second run");
+        startSolve = System.currentTimeMillis();
+        for (Command command : world.getAllCommands()) {
+            // Execute the command
+//            System.out.println("============ Run Second Command " + command + ": ============");
+
+            Translation.Whole translation;
+            long              translTime;
+
+//            long startSolve = System.currentTimeMillis();
+
+            A2KConverter a2K = new A2KConverter(rep,world.getAllReachableSigs(),command,options);
+            Formula f = a2K.getFormula();
+            Bounds b = a2K.getBounds();
+            Options o = a2K.getOptions();
+
+            List<String> f2 = Arrays.asList(f.toString().split("\\&&+"));
+            List<String> f1 = Arrays.asList(formulaSet.toString().split("\\&&+"));
+            ArrayList<Relation> effected = new ArrayList<Relation>();
+            ArrayList<Relation> notEffected = new ArrayList<Relation>();
+
+            for (String sf : f2){
+                if (!f1.contains(sf)){
+                    for (Relation r : b.relations()){
+                        if (sf.contains(r.name()) && !effected.contains(r.name())){
+                            effected.add(r);
+                        }
+                    }
+                }
+            }
+            for (Relation r : b.relations()){
+                if (!effected.contains(r) && r.toString().contains("this/")){
+                    notEffected.add(r);
+                }
+            }
+
+            Map<Relation, TupleSet> lb = b.lowerBoundsM();
+            Map<Relation, TupleSet> ub = b.upperBoundsM();
+            if (b.relations().size() <= used.size()){
+                for (Relation r : notEffected){
+                    TupleSet newB = new TupleSet(b.universe(),r.arity());
+                    if (!r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        String relN = r.name().toString().split("this/")[1];
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[|\\]")[1];
+                            if (unary.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+                        }
+                        ub.put(r,newB);
+                    }
+                    if (r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[+|\\]+")[1];
+                            if (uAtoms.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+                        }
+                        ub.put(r,newB);
+                    }
+                }
+            }
+            if (b.relations().size() >= used.size()){
+                for (Relation r : notEffected){
+                    TupleSet newB = new TupleSet(b.universe(),r.arity());
+                    if (!r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        String relN = r.name().toString().split("this/")[1];
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[|\\]")[1];
+                            if (lAtoms.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+                        }
+                        lb.put(r,newB);
+                    }
+                    if (r.name().toString().contains(".")){
+                        TupleSet t = ub.get(r);
+                        for (Object uo : t){
+                            String split = uo.toString().split("\\[+|\\]+")[1];
+                            if (lAtoms.contains(split)){
+                                newB.add((Tuple) uo);
+                            }
+                        }
+                        lb.put(r,newB);
+                    }
+                }
+            }
+
+//            System.out.println("time for adjust bounds is " + (System.currentTimeMillis() - startSolve));
+            sb.append(String.valueOf((-startSolve+System.currentTimeMillis()))+",");
+
+            translTime = System.currentTimeMillis();
+            translation = Translator.translate(f,b,o);
+            translTime = System.currentTimeMillis() - translTime;
+            firstTranslation = translation;
+
+            long cnfT = System.currentTimeMillis();
+            SATSolver cnf = translation.cnf();
+            int primaryVars = translation.numPrimaryVariables();
 
             translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
 
 
             boolean isSat = cnf.solve();
             long endSolve = System.currentTimeMillis();
-            System.out.println("second solving time for getting first solution is" + (-startSolve + endSolve));
-            System.out.println("cnf solving time is " + (endSolve - cnfSolvingTime));
-
-            //            startSolve = System.currentTimeMillis();
+//            System.out.println("time for get first solution is " + (endSolve-startSolve));
+            sb.append(String.valueOf((-cnfT+endSolve))+",");
+//            System.out.println("time for cnf solving is " + (endSolve-cnfT));
+            sb.append(String.valueOf((-startSolve+endSolve))+",");
 
             Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
             Solution sol;
-            ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
-
-            //            System.out.println("second translation time is" + translTime);
-            //            System.out.println(stats);
-
 
             int[] notModel = new int[primaryVars];
             Solution sool;
-            sool = Solution.satisfiable(stats, translation.interpret());
+            //sool = Solution.satisfiable(stats, translation.interpret());
 
-            while (isSat) {
-                sol = Solution.satisfiable(stats, translation.interpret());
-                solutionCollection.add(sol);
+            while (isSat){
+                //sol = Solution.satisfiable(stats, translation.interpret());
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
                 }
@@ -529,39 +774,13 @@ public final class ExampleUsingTheCompiler {
                 translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
-            //            System.out.println("instance sets is " + solutionCollection.size());
-            endSolve = System.currentTimeMillis();
-            System.out.println("time for getting all solution is " + (endSolve - startSolve));
+//            System.out.println("time for get all solution is" + (System.currentTimeMillis() - startSolve));
+            sb.append(String.valueOf((-startSolve+System.currentTimeMillis())));
+            sb.append('\n');
+            writer.write(sb.toString());
+            writer.close();
             sol = Solver.unsat(translation, stats);
             translation = null;
-            //            System.out.println(solutionCollection);
-
-
-
-            //            A4Solution ans = TranslateAlloyToKodkod.execute_second_command(rep, world.getAllReachableSigs(), command, options,sols);
-            //            System.out.println(ans);
-            //            while (ans.next().satisfiable() && ans.satisfiable()){
-            //                ans = ans.next();
-            ////                instances.add(ans.eval.instance());
-            //                //System.out.println(ans);
-            //            }
-
-            // If satisfiable...
-            //            if (ans.satisfiable()) {
-            //                // You can query "ans" to find out the values of each set or
-            //                // type.
-            //                // This can be useful for debugging.
-            //                //
-            //                // You can also write the outcome to an XML file
-            //                ans.writeXML("alloy_example_output.xml");
-            //                //
-            //                // You can then visualize the XML file by calling this:
-            //                if (viz == null) {
-            //                    viz = new VizGUI(false, "alloy_example_output.xml", null);
-            //                } else {
-            //                    viz.loadXML("alloy_example_output.xml", true);
-            //                }
-            //            }
         }
     }
 

@@ -26,14 +26,12 @@ import java.util.Map;
 import java.util.Set;
 
 import edu.mit.csail.sdg.alloy4.A4Reporter;
-import edu.mit.csail.sdg.alloy4.ErrorWarning;
-import edu.mit.csail.sdg.alloy4viz.VizGUI;
 import edu.mit.csail.sdg.ast.Command;
 import edu.mit.csail.sdg.ast.Module;
 import edu.mit.csail.sdg.parser.CompUtil;
 import edu.mit.csail.sdg.translator.A2KConverter;
 import edu.mit.csail.sdg.translator.A4Options;
-import edu.mit.csail.sdg.translator.A4Solution;
+import edu.mit.csail.sdg.translator.A4Options.SatSolver;
 import kodkod.ast.Formula;
 import kodkod.ast.Relation;
 import kodkod.engine.Solution;
@@ -55,78 +53,41 @@ import kodkod.util.ints.IntSet;
 
 public final class ExampleUsingTheCompiler {
 
-    /*
-     * Execute every command in every file. This method parses every file, then
-     * execute every command. If there are syntax or type errors, it may throw a
-     * ErrorSyntax or ErrorType or ErrorAPI or ErrorFatal exception. You should
-     * catch them and display them, and they may contain filename/line/column
-     * information.
-     */
-
     public static void main(String[] args) throws Exception {
-        long count;
-        // The visualizer (We will initialize it to nonnull when we visualize an
-        // Alloy solution)
-        VizGUI viz = null;
-        //        String filename, filenames;
+        new ExampleUsingTheCompiler().run(args[0], args[1]);
+    }
 
-        // Alloy4 sends diagnostic messages and progress reports to the
-        // A4Reporter.
-        // By default, the A4Reporter ignores all these events (but you can
-        // extend the A4Reporter to display the event for the user)
-        A4Reporter rep = new A4Reporter() {
+    private final A4Options  options;
+    private final A4Reporter rep = A4Reporter.NOP;
 
-            // For example, here we choose to display each "warning" by printing
-            // it to System.out
-            @Override
-            public void warning(ErrorWarning msg) {
-                //                System.out.print("Relevance Warning:\n" + (msg.toString().trim()) + "\n\n");
-                System.out.flush();
-            }
-        };
-        String filename = args[0];
-        //        String filename = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/b.als";
-        //        String filename = "/Users/yuchenxi/Downloads/G-Play/ICC2.als";
-        //        String filename = "/Users/yuchenxi/1.als";
-        // Parse+typecheck the model
-        //        System.out.println("=========== Parsing+Typechecking " + filename + " =============");
-        Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
+    private Set<Relation>    used;
+    private Formula          formulaSet;
 
-        // Choose some default options for how you want to execute the
-        // commands
-        A4Options options = new A4Options();
+    public ExampleUsingTheCompiler() {
+        options = new A4Options();
+        options.solver = SatSolver.SAT4J;
+    }
 
-        options.solver = A4Options.SatSolver.SAT4J;
-
-        ArrayList<A4Solution> sols = new ArrayList<A4Solution>();
+    private void run(String filename, String filenames) throws Exception {
         ArrayList<Integer> positive = new ArrayList<Integer>();
         ArrayList<Solution> solutionCollection = new ArrayList<Solution>();
-
-        Translation.Whole firstTranslation;
-        Bounds firstBounds;
 
         HashMap<Relation,IntSet> reMap = new HashMap<Relation,IntSet>();
         HashMap<String,Integer> map = new HashMap<String,Integer>();
         HashMap<Integer,String> tupleLow = new HashMap<Integer,String>();
-        HashMap<Relation,int[]> ref = new HashMap<Relation,int[]>();
 
-        Set<Relation> used = null;
         ArrayList<String> uAtoms = new ArrayList<String>();
         ArrayList<String> unary = new ArrayList<String>();
         ArrayList<String> lAtoms = new ArrayList<String>();
-        ArrayList<String> lunary = new ArrayList<String>();
-        Formula formulaSet = null;
-
-        long startSolve = System.currentTimeMillis();
 
         boolean empty = true;
-        StringBuilder sb = new StringBuilder();
-        FileWriter writer = new FileWriter("test.csv", true);
-
-        BufferedReader br = new BufferedReader(new FileReader("test.csv"));
-        if (br.readLine() != null) {
-            empty = false;
+        try (BufferedReader br = new BufferedReader(new FileReader("test.csv"))) {
+            if (br.readLine() != null) {
+                empty = false;
+            }
         }
+
+        StringBuilder sb = new StringBuilder();
         if (empty) {
             String columnNamesList = "specification,Alloy 5 get first solution,Alloy 5 get entire solutions,Titanium adjust bounds,Titanium solving CNF,Titanium get first solution,Titanium get entire solution,Opt adjust bounds,Opt solving CNF,Opt get first solution,Opt get entire solution";
             sb.append(columnNamesList + "\n");
@@ -138,7 +99,26 @@ public final class ExampleUsingTheCompiler {
         //        sb.append(columnNamesList +"\n");
         //        sb.append("1"+",");
 
+        Module world = CompUtil.parseEverything_fromFile(rep, null, filename);
+        alloyRun1(world, positive, reMap, map, tupleLow);
+        chenxiRun1(world, solutionCollection, tupleLow, uAtoms, unary, lAtoms);
+
+        world = CompUtil.parseEverything_fromFile(rep, null, filenames);
+        alloyRun2(world, sb);
+        titaniumRun2(world, solutionCollection, formulaSet, sb);
+        chenxiRun2(world, uAtoms, unary, lAtoms, formulaSet, sb);
+
+        sb.append('\n');
+        try (FileWriter writer = new FileWriter("test.csv", true)) {
+            writer.write(sb.toString());
+        }
+    }
+
+    private void alloyRun1(Module world, ArrayList<Integer> positive, HashMap<Relation,IntSet> reMap, HashMap<String,Integer> map, HashMap<Integer,String> tupleLow) throws Exception {
+        System.err.println("  -- running Alloy 5 on the first file --");
         //first run for Alloy 5
+        long startSolve = System.currentTimeMillis();
+        long endSolve;
         for (Command command : world.getAllCommands()) {
             // Execute the command
             //            System.out.println("============ Command " + command + ": ============");
@@ -149,24 +129,19 @@ public final class ExampleUsingTheCompiler {
             A2KConverter a2K = new A2KConverter(world, rep, world.getAllReachableSigs(), command, options);
             Formula f = a2K.getFormula();
             Bounds b = a2K.getBounds();
-            Set<Relation> relations = b.relations();
-            firstBounds = b;
             used = b.relations();
             Options o = a2K.getOptions();
 
             translTime = System.currentTimeMillis();
-            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
-            firstTranslation = translation;
 
             SATSolver cnf = translation.cnf();
             int primaryVars = translation.numPrimaryVariables();
 
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
-
             boolean isSat = cnf.solve();
-            long endSolve = System.currentTimeMillis();
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
             //            System.out.println("first solving time is" + (-startSolve+endSolve));
             //            sb.append(String.valueOf((-startSolve+endSolve))+",");
 
@@ -184,7 +159,6 @@ public final class ExampleUsingTheCompiler {
                 if (re.toString().contains("this")) {
                     TupleSet atoms = b.upperBound(re);
                     TupleSet lowerA = b.lowerBound(re);
-                    IntSet vars = translation.primaryVariables(re);
                     for (Object i : atoms) {
                         if (!lowerA.contains(i)) {
                             String head = re.name();
@@ -204,8 +178,8 @@ public final class ExampleUsingTheCompiler {
                     }
                 }
             }
-            System.out.println("111");
-            for (count = 0; isSat; count++) {
+            long count = 0;
+            for (; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
@@ -224,10 +198,10 @@ public final class ExampleUsingTheCompiler {
                 }
                 cnf.addClause(notModel);
                 //solve next one
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
-            System.err.printf("enumerated solutions: %d%n", count);
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -245,7 +219,65 @@ public final class ExampleUsingTheCompiler {
                 }
             }
         }
+    }
 
+    private void alloyRun2(Module world, StringBuilder sb) throws Exception {
+        System.err.println("  -- running Alloy 5 on the second file --");
+        long startSolve, endSolve;
+        // pre-process before running second time
+        startSolve = System.currentTimeMillis();
+        for (Command command : world.getAllCommands()) {
+            Translation.Whole translation;
+            long translTime;
+
+            A2KConverter a2K = new A2KConverter(world, rep, world.getAllReachableSigs(), command, options);
+            Formula f = a2K.getFormula();
+            Bounds b = a2K.getBounds();
+            used = b.relations();
+            Options o = a2K.getOptions();
+
+            translTime = System.currentTimeMillis();
+            translation = Translator.translate(f, b, o);
+            translTime = System.currentTimeMillis() - translTime;
+
+            SATSolver cnf = translation.cnf();
+            int primaryVars = translation.numPrimaryVariables();
+
+            boolean isSat = cnf.solve();
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
+
+            sb.append(String.valueOf((-startSolve + endSolve)) + ",");
+            Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
+            Solution sol;
+
+            int[] notModel = new int[primaryVars];
+            ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
+
+            boolean e = true;
+            long count = 0;
+            for (; isSat; count++) {
+                sol = Solution.satisfiable(stats, translation.interpret());
+                //                solutionCollection.add(sol);
+                for (int i = 1; i <= primaryVars; i++) {
+                    notModel[i - 1] = cnf.valueOf(i) ? -i : i;
+                }
+                cnf.addClause(notModel);
+                //solve next one
+                isSat = cnf.solve();
+            }
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            sol = Solver.unsat(translation, stats);
+            translation = null;
+            //            System.out.println("set size is " + solutionCollection.size());
+            sb.append(String.valueOf((-startSolve + endSolve)) + ",");
+        }
+    }
+
+    private void chenxiRun1(Module world, ArrayList<Solution> solutionCollection, HashMap<Integer,String> tupleLow, ArrayList<String> uAtoms, ArrayList<String> unary, ArrayList<String> lAtoms) throws Exception {
+        System.err.println("  -- running Chenxi on the first file --");
+        long startSolve, endSolve;
         // first run for opt
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
@@ -263,18 +295,15 @@ public final class ExampleUsingTheCompiler {
             formulaSet = f;
 
             translTime = System.currentTimeMillis();
-            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
 
             SATSolver cnf = translation.cnf();
             int primaryVars = translation.numPrimaryVariables();
 
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
-
             boolean isSat = cnf.solve();
-            long endSolve = System.currentTimeMillis();
-            //            System.out.println("first solving time is" + (-startSolve+endSolve));
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
 
             Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
             Solution sol;
@@ -283,7 +312,8 @@ public final class ExampleUsingTheCompiler {
             ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
 
             boolean firstSol = true;
-            for (count = 0; isSat; count++) {
+            long count = 0;
+            for (; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
@@ -341,12 +371,9 @@ public final class ExampleUsingTheCompiler {
                 }
 
                 //solve next one
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
                 firstSol = false;
             }
-            System.err.printf("enumerated solutions: %d%n", count);
-
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -366,7 +393,6 @@ public final class ExampleUsingTheCompiler {
                 startSolve = System.currentTimeMillis();
                 cnf = translation.cnf();
                 primaryVars = translation.numPrimaryVariables();
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 int[] ad = {
                             -i
                 };
@@ -378,70 +404,17 @@ public final class ExampleUsingTheCompiler {
                     String so = s.toString().split("\\[|\\]")[1];
                     lAtoms.add(so);
                 }
+                count++;
             }
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
         }
+    }
 
-        //        String filenames = "/Users/yuchenxi/dsl/Project/Implementation/splmodel/Banking_Machine/hh.als";
-        String filenames = args[1];
-        //        String filenames = "/Users/yuchenxi/1m.als";
-        world = CompUtil.parseEverything_fromFile(rep, null, filenames);
 
-        // pre-process before running second time
-        long startsSolve = System.currentTimeMillis();
-        for (Command command : world.getAllCommands()) {
-            // Execute the command
-            System.out.println("============ Command " + command + ": ============");
-
-            Translation.Whole translation;
-            long translTime;
-
-            A2KConverter a2K = new A2KConverter(world, rep, world.getAllReachableSigs(), command, options);
-            Formula f = a2K.getFormula();
-            Bounds b = a2K.getBounds();
-            used = b.relations();
-            Options o = a2K.getOptions();
-
-            translTime = System.currentTimeMillis();
-            System.err.println(b);
-            translation = Translator.translate(f, b, o);
-            translTime = System.currentTimeMillis() - translTime;
-
-            SATSolver cnf = translation.cnf();
-            int primaryVars = translation.numPrimaryVariables();
-
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
-
-            boolean isSat = cnf.solve();
-
-            long endSolve = System.currentTimeMillis();
-            //            System.out.println("first solving time is" + (-startsSolve+endSolve));
-            sb.append(String.valueOf((-startSolve + endSolve)) + ",");
-            Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
-            Solution sol;
-
-            int[] notModel = new int[primaryVars];
-            ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
-
-            boolean e = true;
-            for (count = 0; isSat; count++) {
-                sol = Solution.satisfiable(stats, translation.interpret());
-                //                solutionCollection.add(sol);
-                for (int i = 1; i <= primaryVars; i++) {
-                    notModel[i - 1] = cnf.valueOf(i) ? -i : i;
-                }
-                cnf.addClause(notModel);
-                //solve next one
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
-                isSat = cnf.solve();
-            }
-            System.err.printf("enumerated solutions: %d%n", count);
-
-            sol = Solver.unsat(translation, stats);
-            translation = null;
-            //            System.out.println("set size is " + solutionCollection.size());
-            sb.append(String.valueOf((-startSolve + System.currentTimeMillis())) + ",");
-        }
-
+    private void titaniumRun2(Module world, ArrayList<Solution> solutionCollection, Formula formulaSet, StringBuilder sb) throws Exception {
+        System.err.println("  -- running Titanium on the second file --");
+        long startSolve, endSolve;
         // titanium
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
@@ -476,10 +449,6 @@ public final class ExampleUsingTheCompiler {
                     ArrayList<String> tep = new ArrayList<String>();
                     ArrayList<String> btep = new ArrayList<String>();
                     if (r.toString().contains("this/") && !r.toString().contains(".")) {
-                        TupleSet instanceTuples = instance.tuples(r.name());
-                        if (instanceTuples == null) {
-                            continue;
-                        }
                         String ss = instance.tuples(r.name()).toString();
                         String[] split = ss.split("\\[+|\\]+");
                         for (String s1 : split) {
@@ -620,11 +589,11 @@ public final class ExampleUsingTheCompiler {
             }
 
             long endAdj = System.currentTimeMillis();
+            System.err.printf("    adjusted: %10dms%n", endAdj - startSolve);
             //            System.out.println("adjusting bounds time is " + (adjTime-startSolve));
             sb.append(String.valueOf((endAdj - startSolve)) + ",");
 
             translTime = System.currentTimeMillis();
-            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
 
@@ -633,10 +602,10 @@ public final class ExampleUsingTheCompiler {
             SATSolver cnf = translation.cnf();
             int primaryVars = translation.numPrimaryVariables();
 
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
 
             boolean isSat = cnf.solve();
-            long endSolve = System.currentTimeMillis();
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    first solve: %10dms%n", endSolve - cnfSolving);
             //            System.out.println("time for getting first sol is "+(endSolve-startSolve));
             sb.append(String.valueOf((-cnfSolving + endSolve)) + ",");
             //            System.out.println("time for cnf solving is" + (endSolve-cnfSolving));
@@ -647,7 +616,8 @@ public final class ExampleUsingTheCompiler {
 
             int[] notModel = new int[primaryVars];
 
-            for (count = 0; isSat; count++) {
+            long count = 0;
+            for (; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 //                solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
@@ -655,20 +625,21 @@ public final class ExampleUsingTheCompiler {
                 }
                 cnf.addClause(notModel);
                 //solve next one
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
-            System.err.printf("enumerated solutions: %d%n", count);
-
-
             endSolve = System.currentTimeMillis();
+            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
             //            System.out.println("time for getting all sol is " + (endSolve-startSolve));
             //            System.out.println(solutionCollection.size());
             sb.append(String.valueOf((-startSolve + endSolve)) + ",");
             sol = Solver.unsat(translation, stats);
             translation = null;
         }
+    }
 
+    private void chenxiRun2(Module world, ArrayList<String> uAtoms, ArrayList<String> unary, ArrayList<String> lAtoms, Formula formulaSet, StringBuilder sb) throws Exception {
+        System.err.println("  -- running Chenxi on the second file --");
+        long startSolve, endSolve;
         //second run
         //        System.out.println("start second run");
         startSolve = System.currentTimeMillis();
@@ -762,23 +733,21 @@ public final class ExampleUsingTheCompiler {
             }
 
             //            System.out.println("time for adjust bounds is " + (System.currentTimeMillis() - startSolve));
-            sb.append(String.valueOf((-startSolve + System.currentTimeMillis())) + ",");
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    adjusted: %10dms%n", endSolve - startSolve);
+            sb.append(String.valueOf((-startSolve + endSolve)) + ",");
 
             translTime = System.currentTimeMillis();
-            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
-            firstTranslation = translation;
 
             long cnfT = System.currentTimeMillis();
             SATSolver cnf = translation.cnf();
             int primaryVars = translation.numPrimaryVariables();
 
-            translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
-
-
             boolean isSat = cnf.solve();
-            long endSolve = System.currentTimeMillis();
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    first solve: %10dms%n", endSolve - cnfT);
             //            System.out.println("time for get first solution is " + (endSolve-startSolve));
             sb.append(String.valueOf((-cnfT + endSolve)) + ",");
             //            System.out.println("time for cnf solving is " + (endSolve-cnfT));
@@ -788,26 +757,20 @@ public final class ExampleUsingTheCompiler {
             Solution sol;
 
             int[] notModel = new int[primaryVars];
-            Solution sool;
-            //sool = Solution.satisfiable(stats, translation.interpret());
-
-            for (count = 0; isSat; count++) {
+            long count = 0;
+            for (; isSat; count++) {
                 //sol = Solution.satisfiable(stats, translation.interpret());
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
                 }
                 cnf.addClause(notModel);
                 //solve next one
-                translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
-            System.err.printf("enumerated solutions: %d%n", count);
-
+            endSolve = System.currentTimeMillis();
+            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
             //            System.out.println("time for get all solution is" + (System.currentTimeMillis() - startSolve));
-            sb.append(String.valueOf((-startSolve + System.currentTimeMillis())));
-            sb.append('\n');
-            writer.write(sb.toString());
-            writer.close();
+            sb.append(String.valueOf((-startSolve + endSolve)));
             sol = Solver.unsat(translation, stats);
             translation = null;
         }

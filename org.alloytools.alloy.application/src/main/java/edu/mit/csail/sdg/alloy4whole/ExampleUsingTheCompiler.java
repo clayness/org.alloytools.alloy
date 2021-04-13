@@ -100,8 +100,8 @@ public final class ExampleUsingTheCompiler {
 
         world = CompUtil.parseEverything_fromFile(rep, null, filenames);
         alloyRun2(world, sb);
-        titaniumRun2(world, solutionCollection, formulaSet, sb);
-        chenxiRun2(world, uAtoms, unary, lAtoms, formulaSet, sb);
+        titaniumRun2(world, solutionCollection, sb);
+        chenxiRun2(world, uAtoms, unary, lAtoms, sb);
 
         sb.append('\n');
         try (FileWriter writer = new FileWriter("test.csv", true)) {
@@ -112,8 +112,8 @@ public final class ExampleUsingTheCompiler {
     private void alloyRun1(Module world, ArrayList<Integer> positive, HashMap<Relation,IntSet> reMap, HashMap<String,Integer> map, HashMap<Integer,String> tupleLow) throws Exception {
         System.err.println("  -- running Alloy 5 on the first file --");
         //first run for Alloy 5
-        long startSolve = System.currentTimeMillis();
-        long endSolve;
+        long startSolve, endSolve, firstSolve, totalSolve;
+        startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
             // Execute the command
             //            System.out.println("============ Command " + command + ": ============");
@@ -136,7 +136,7 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             endSolve = System.currentTimeMillis();
-            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
+            firstSolve = endSolve - startSolve;
             //            System.out.println("first solving time is" + (-startSolve+endSolve));
             //            sb.append(String.valueOf((-startSolve+endSolve))+",");
 
@@ -196,7 +196,7 @@ public final class ExampleUsingTheCompiler {
                 isSat = cnf.solve();
             }
             endSolve = System.currentTimeMillis();
-            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            totalSolve = endSolve - startSolve;
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -213,12 +213,17 @@ public final class ExampleUsingTheCompiler {
                     }
                 }
             }
+
+            System.err.printf("%30s: %10dms%n", "first solve", firstSolve);
+            System.err.printf("%30s: %10d%n", "number vars", primaryVars);
+            System.err.printf("%30s: %10d%n", "number sols", count);
+            System.err.printf("%30s: %10dms%n", "total time", totalSolve);
         }
     }
 
     private void alloyRun2(Module world, StringBuilder sb) throws Exception {
         System.err.println("  -- running Alloy 5 on the second file --");
-        long startSolve, endSolve;
+        long startSolve, endSolve, firstSolve, totalSolve;
         // pre-process before running second time
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
@@ -240,7 +245,7 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             endSolve = System.currentTimeMillis();
-            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
+            firstSolve = endSolve - startSolve;
 
             sb.append(String.valueOf((-startSolve + endSolve)) + ",");
             Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
@@ -262,17 +267,22 @@ public final class ExampleUsingTheCompiler {
                 isSat = cnf.solve();
             }
             endSolve = System.currentTimeMillis();
-            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            totalSolve = endSolve - startSolve;
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
             sb.append(String.valueOf((-startSolve + endSolve)) + ",");
+
+            System.err.printf("%30s: %10dms%n", "first solve", firstSolve);
+            System.err.printf("%30s: %10d%n", "number vars", primaryVars);
+            System.err.printf("%30s: %10d%n", "number sols", count);
+            System.err.printf("%30s: %10dms%n", "total time", totalSolve);
         }
     }
 
     private void chenxiRun1(Module world, ArrayList<Solution> solutionCollection, HashMap<Integer,String> tupleLow, ArrayList<String> uAtoms, ArrayList<String> unary, ArrayList<String> lAtoms) throws Exception {
         System.err.println("  -- running Chenxi on the first file --");
-        long startSolve, endSolve;
+        long startSolve, endSolve, firstSolve, totalSolve;
         // first run for opt
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
@@ -298,7 +308,7 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             endSolve = System.currentTimeMillis();
-            System.err.printf("    first solve: %10dms%n", endSolve - startSolve);
+            firstSolve = endSolve - startSolve;
 
             Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
             Solution sol;
@@ -402,14 +412,19 @@ public final class ExampleUsingTheCompiler {
                 count++;
             }
             endSolve = System.currentTimeMillis();
-            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            totalSolve = endSolve - startSolve;
+
+            System.err.printf("%30s: %10dms%n", "first solve", firstSolve);
+            System.err.printf("%30s: %10d%n", "number vars", primaryVars);
+            System.err.printf("%30s: %10d%n", "number sols", count);
+            System.err.printf("%30s: %10dms%n", "total time", totalSolve);
         }
     }
 
 
-    private void titaniumRun2(Module world, ArrayList<Solution> solutionCollection, Formula formulaSet, StringBuilder sb) throws Exception {
+    private void titaniumRun2(Module world, ArrayList<Solution> solutionCollection, StringBuilder sb) throws Exception {
         System.err.println("  -- running Titanium on the second file --");
-        long startSolve, endSolve;
+        long startSolve, endSolve, firstSolve, totalSolve;
         // titanium
         startSolve = System.currentTimeMillis();
         for (Command command : world.getAllCommands()) {
@@ -584,7 +599,6 @@ public final class ExampleUsingTheCompiler {
             }
 
             long endAdj = System.currentTimeMillis();
-            System.err.printf("    adjusted: %10dms%n", endAdj - startSolve);
             //            System.out.println("adjusting bounds time is " + (adjTime-startSolve));
             sb.append(String.valueOf((endAdj - startSolve)) + ",");
 
@@ -600,7 +614,8 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             endSolve = System.currentTimeMillis();
-            System.err.printf("    first solve: %10dms%n", endSolve - cnfSolving);
+            firstSolve = endSolve - startSolve;
+
             //            System.out.println("time for getting first sol is "+(endSolve-startSolve));
             sb.append(String.valueOf((-cnfSolving + endSolve)) + ",");
             //            System.out.println("time for cnf solving is" + (endSolve-cnfSolving));
@@ -623,18 +638,23 @@ public final class ExampleUsingTheCompiler {
                 isSat = cnf.solve();
             }
             endSolve = System.currentTimeMillis();
-            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            totalSolve = endSolve - startSolve;
             //            System.out.println("time for getting all sol is " + (endSolve-startSolve));
             //            System.out.println(solutionCollection.size());
             sb.append(String.valueOf((-startSolve + endSolve)) + ",");
             sol = Solver.unsat(translation, stats);
             translation = null;
+
+            System.err.printf("%30s: %10dms%n", "first solve", firstSolve);
+            System.err.printf("%30s: %10d%n", "number vars", primaryVars);
+            System.err.printf("%30s: %10d%n", "number sols", count);
+            System.err.printf("%30s: %10dms%n", "total time", totalSolve);
         }
     }
 
-    private void chenxiRun2(Module world, ArrayList<String> uAtoms, ArrayList<String> unary, ArrayList<String> lAtoms, Formula formulaSet, StringBuilder sb) throws Exception {
+    private void chenxiRun2(Module world, ArrayList<String> uAtoms, ArrayList<String> unary, ArrayList<String> lAtoms, StringBuilder sb) throws Exception {
         System.err.println("  -- running Chenxi on the second file --");
-        long startSolve, endSolve;
+        long startSolve, endSolve, firstSolve, totalSolve;
         //second run
         //        System.out.println("start second run");
         startSolve = System.currentTimeMillis();
@@ -742,7 +762,7 @@ public final class ExampleUsingTheCompiler {
 
             boolean isSat = cnf.solve();
             endSolve = System.currentTimeMillis();
-            System.err.printf("    first solve: %10dms%n", endSolve - cnfT);
+            firstSolve = endSolve - startSolve;
             //            System.out.println("time for get first solution is " + (endSolve-startSolve));
             sb.append(String.valueOf((-cnfT + endSolve)) + ",");
             //            System.out.println("time for cnf solving is " + (endSolve-cnfT));
@@ -763,11 +783,17 @@ public final class ExampleUsingTheCompiler {
                 isSat = cnf.solve();
             }
             endSolve = System.currentTimeMillis();
-            System.err.printf("    enumerated: vars=%10d, sols=%10d, %10dms%n", primaryVars, count, endSolve - startSolve);
+            totalSolve = endSolve - startSolve;
             //            System.out.println("time for get all solution is" + (System.currentTimeMillis() - startSolve));
             sb.append(String.valueOf((-startSolve + endSolve)));
             sol = Solver.unsat(translation, stats);
             translation = null;
+
+
+            System.err.printf("%30s: %10dms%n", "first solve", firstSolve);
+            System.err.printf("%30s: %10d%n", "number vars", primaryVars);
+            System.err.printf("%30s: %10d%n", "number sols", count);
+            System.err.printf("%30s: %10dms%n", "total time", totalSolve);
         }
     }
 

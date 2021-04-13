@@ -15,8 +15,7 @@
 
 package edu.mit.csail.sdg.alloy4whole;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,12 +79,8 @@ public final class ExampleUsingTheCompiler {
         ArrayList<String> unary = new ArrayList<String>();
         ArrayList<String> lAtoms = new ArrayList<String>();
 
-        boolean empty = true;
-        try (BufferedReader br = new BufferedReader(new FileReader("test.csv"))) {
-            if (br.readLine() != null) {
-                empty = false;
-            }
-        }
+        File outfile = new File("test.csv");
+        boolean empty = !outfile.exists();
 
         StringBuilder sb = new StringBuilder();
         if (empty) {

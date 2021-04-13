@@ -85,27 +85,27 @@ public class ExampleChenxi {
     }
 
     private static void adjustCnf(Translation transl, Bounds b) {
-        Bounds ref = transl.bounds();
-        SATSolver cnf = transl.cnf();
-        for (Relation r : ref.relations()) {
-            IntIterator viter = transl.primaryVariables(r).iterator();
-            TupleSet vtuples = ref.upperBound(r).clone();
-            vtuples.removeAll(ref.lowerBound(r));
-            Iterator<Tuple> titer = vtuples.iterator();
-            while (titer.hasNext()) {
-                int v = viter.next();
-                Tuple t = titer.next();
-                if (b.lowerBound(r).contains(t)) {
-                    cnf.addClause(new int[] {
-                                             v
-                    });
-                } else if (!b.upperBound(r).contains(t)) {
-                    cnf.addClause(new int[] {
-                                             -v
-                    });
-                }
-            }
-        }
+        //        Bounds ref = transl.bounds();
+        //        SATSolver cnf = transl.cnf();
+        //        for (Relation r : ref.relations()) {
+        //            IntIterator viter = transl.primaryVariables(r).iterator();
+        //            TupleSet vtuples = ref.upperBound(r).clone();
+        //            vtuples.removeAll(ref.lowerBound(r));
+        //            Iterator<Tuple> titer = vtuples.iterator();
+        //            while (titer.hasNext()) {
+        //                int v = viter.next();
+        //                Tuple t = titer.next();
+        //                if (b.lowerBound(r).contains(t)) {
+        //                    cnf.addClause(new int[] {
+        //                                             v
+        //                    });
+        //                } else if (!b.upperBound(r).contains(t)) {
+        //                    cnf.addClause(new int[] {
+        //                                             -v
+        //                    });
+        //                }
+        //            }
+        //        }
     }
 
     private static Bounds buildBounds(IntSet upper, IntSet lower, Translation translation) {
@@ -225,7 +225,7 @@ public class ExampleChenxi {
 
     private static long getChenxiInstances(A2KConverter a2k, Bounds b) {
         long beg = System.currentTimeMillis(), count = 0;
-        Translation translation = Translator.translate(a2k.getFormula(), a2k.getBounds(), a2k.getOptions());
+        Translation translation = Translator.translate(a2k.getFormula(), b, a2k.getOptions());
         adjustCnf(translation, b);
         System.err.printf("    translated        : time=%10dms,  vars=%10d, clauses=%10d%n", System.currentTimeMillis() - beg, translation.cnf().numberOfVariables(), translation.cnf().numberOfClauses());
         try {
@@ -259,10 +259,10 @@ public class ExampleChenxi {
     }
 
     private static void getChenxiLowerBound(A2KConverter a2k, Bounds b, IntSet lower) {
-        long beg = System.currentTimeMillis();
+        long beg = System.currentTimeMillis(), count = 0;
         try {
             IntIterator iter = lower.iterator();
-            while (iter.hasNext()) {
+            for (; iter.hasNext(); count++) {
                 Translation transl = Translator.translate(a2k.getFormula(), b, a2k.getOptions());
                 SATSolver cnf = transl.cnf();
                 cnf.addClause(new int[] {
@@ -274,7 +274,7 @@ public class ExampleChenxi {
                 cnf.free();
             }
         } finally {
-            System.err.printf("    found lower bound : time=%10dms, lower=%10d%n", System.currentTimeMillis() - beg, lower.size());
+            System.err.printf("    found lower bound : time=%10dms, count=%10d,   lower=%10d%n", System.currentTimeMillis() - beg, count, lower.size());
         }
     }
 
@@ -307,7 +307,7 @@ public class ExampleChenxi {
             }
             return count;
         } finally {
-            System.err.printf("    computed bounds   : time=%10dms, count=%10d, upper=%10d%n", System.currentTimeMillis() - beg, count, upper.size());
+            System.err.printf("    computed bounds   : time=%10dms, count=%10d,   upper=%10d%n", System.currentTimeMillis() - beg, count, upper.size());
         }
     }
 
@@ -343,42 +343,38 @@ public class ExampleChenxi {
             }
             return count;
         } finally {
-            System.err.printf("    enumerated models : time=%10dms, count=%10d%n", System.currentTimeMillis() - beg, count);
+            System.err.printf("    enumerated models : time=%10dms, count=%10d,   upper=%10d, lower=%10d%n", System.currentTimeMillis() - beg, count, upper.size(), lower.size());
         }
     }
 
     public static void main(String[] args) throws Exception {
         primeTheSolver();
-        Module world1 = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, args[0]);
-        System.err.println("======== " + args[0] + " ========");
-        Bounds b0 = enumerateAlloy(world1);
-        System.err.println(b0);
-        System.err.println("----------------------");
-        //Bounds b1 = enumerateTitanium(world1, null);
-        //System.err.println(b1);
-        //System.err.println("----------------------");
-        Bounds b2 = enumerateChenxi(world1, null);
-        System.err.println(b2);
+        Bounds tBounds = null, cBounds = null;
+        for (int i = 0; i < args.length; i++) {
+            try {
+                String filename = args[i];
+                Module original = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filename);
+                System.err.println("======== " + filename + " ========");
+                enumerateAlloy(original);
+                System.err.println("----------------------");
+                tBounds = enumerateTitanium(original, tBounds);
+                System.err.println("----------------------");
+                cBounds = enumerateChenxi(original, cBounds);
 
-        System.err.println();
-
-        Module world2 = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, args[1]);
-        System.err.println("======== " + args[1] + " ========");
-        Bounds c0 = enumerateAlloy(world2);
-        System.err.println(c0);
-        System.err.println("----------------------");
-        //Bounds c1 = enumerateTitanium(world2, b1);
-        //System.err.println(c1);
-        //System.err.println("----------------------");
-        Bounds c2 = enumerateChenxi(world2, b2);
-        System.err.println(c2);
+                System.err.println();
+            } catch (Exception e) {
+                e.printStackTrace();
+                tBounds = null;
+                cBounds = null;
+            }
+        }
     }
 
     private static A4Options options() {
         if (options == null) {
             options = new A4Options();
             options.solver = SatSolver.MiniSatJNI;
-            options.symmetry = 20;
+            options.symmetry = 0;
         }
         return options;
     }

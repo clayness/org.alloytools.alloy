@@ -3,6 +3,7 @@ package edu.mit.csail.sdg.alloy4whole;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -83,6 +84,30 @@ public class ExampleChenxi {
         }
     }
 
+    private static void adjustCnf(Translation transl, Bounds b) {
+        Bounds ref = transl.bounds();
+        SATSolver cnf = transl.cnf();
+        for (Relation r : ref.relations()) {
+            IntIterator viter = transl.primaryVariables(r).iterator();
+            TupleSet vtuples = ref.upperBound(r).clone();
+            vtuples.removeAll(ref.lowerBound(r));
+            Iterator<Tuple> titer = vtuples.iterator();
+            while (titer.hasNext()) {
+                int v = viter.next();
+                Tuple t = titer.next();
+                if (b.lowerBound(r).contains(t)) {
+                    cnf.addClause(new int[] {
+                                             v
+                    });
+                } else if (!b.upperBound(r).contains(t)) {
+                    cnf.addClause(new int[] {
+                                             -v
+                    });
+                }
+            }
+        }
+    }
+
     private static Bounds buildBounds(IntSet upper, IntSet lower, Translation translation) {
         long beg = System.currentTimeMillis();
         try {
@@ -114,13 +139,11 @@ public class ExampleChenxi {
         }
     }
 
-    private static void enumerateAlloy(String filename) throws Exception {
+    private static Bounds enumerateAlloy(Module world) throws Exception {
         long beg = System.currentTimeMillis();
-        Module world = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filename);
         Command command = world.getAllCommands().get(0);
-
         A2KConverter a2k = new A2KConverter(world, A4Reporter.NOP, world.getAllReachableSigs(), command, options());
-        System.err.printf("    parsed file       : time=%10dms%n", System.currentTimeMillis() - beg);
+
         long tbeg = System.currentTimeMillis();
         Translation translation = Translator.translate(a2k.getFormula(), a2k.getBounds(), a2k.getOptions());
         System.err.printf("    translated        : time=%10dms,  vars=%10d, clauses=%10d%n", System.currentTimeMillis() - tbeg, translation.cnf().numberOfVariables(), translation.cnf().numberOfClauses());
@@ -133,6 +156,7 @@ public class ExampleChenxi {
         System.err.printf("    solved one        : time=%10dms%n", System.currentTimeMillis() - sbeg);
 
         long count = 0;
+        long lastlog = System.currentTimeMillis();
         while (isSat) {
             int[] notModel = new int[numVariables];
             for (int i = 1; i <= numVariables; i++) {
@@ -141,25 +165,29 @@ public class ExampleChenxi {
             cnf.addClause(notModel);
             isSat = cnf.solve();
             count++;
+            long now = System.currentTimeMillis();
+            if (now - lastlog >= Duration.ofMinutes(3).toMillis()) {
+                System.err.printf("    enumerating: %10d%n", count);
+                lastlog = now;
+            }
         }
         long end = System.currentTimeMillis();
         System.err.printf("    enumerated models : time=%10dms, count=%10d%n", end - sbeg, count);
         translation.cnf().free();
-        System.err.printf("ran file with Alloy   : time=%10dms, count=%10d, file=%s%n", end - beg, count, filename);
+        System.err.printf("ran file with Alloy   : time=%10dms, count=%10d%n", end - beg, count);
+        return a2k.getBounds();
     }
 
-    private static Bounds enumerateChenxi(String filename, Bounds bounds) throws Exception {
+    private static Bounds enumerateChenxi(Module world, Bounds bounds) throws Exception {
         long beg = System.currentTimeMillis();
-        Module world = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filename);
         Command command = world.getAllCommands().get(0);
         A2KConverter a2k = new A2KConverter(world, A4Reporter.NOP, world.getAllReachableSigs(), command, options());
-        System.err.printf("    parsed file       : time=%10dms%n", System.currentTimeMillis() - beg);
         Bounds b = adjustBounds(bounds, a2k.getBounds());
 
         long tbeg = System.currentTimeMillis();
         Options opts = a2k.getOptions().clone();
         opts.setSymmetryBreaking(0);
-        Translation translation = Translator.translate(a2k.getFormula(), a2k.getBounds(), opts);
+        Translation translation = Translator.translate(a2k.getFormula(), b, opts);
         adjustCnf(translation, b);
         System.err.printf("    translated        : time=%10dms,  vars=%10d, clauses=%10d%n", System.currentTimeMillis() - tbeg, translation.cnf().numberOfVariables(), translation.cnf().numberOfClauses());
 
@@ -171,40 +199,15 @@ public class ExampleChenxi {
         translation.cnf().free();
         // now get the actual isntance set
         long iCount = getChenxiInstances(a2k, retval);
-        System.err.printf("ran file with Chenxi  : time=%10dms, count=%10d, file=%s%n", System.currentTimeMillis() - beg, iCount, filename);
+        System.err.printf("ran file with Chenxi  : time=%10dms, count=%10d%n", System.currentTimeMillis() - beg, iCount);
         return retval;
     }
 
-    private static void adjustCnf(Translation transl, Bounds b) {
-        Bounds ref = transl.bounds();
-        for (Relation r : ref.relations()) {
-            IntIterator viter = transl.primaryVariables(r).iterator();
-            TupleSet vtuples = ref.upperBound(r).clone();
-            vtuples.removeAll(ref.lowerBound(r));
-            Iterator<Tuple> titer = vtuples.iterator();
-            while (titer.hasNext()) {
-                int v = viter.next();
-                Tuple t = titer.next();
-                if (b.lowerBound(r).contains(t)) {
-                    transl.cnf().addClause(new int[] {
-                                                      v
-                    });
-                } else if (!b.upperBound(r).contains(t)) {
-                    transl.cnf().addClause(new int[] {
-                                                      -v
-                    });
-                }
-            }
-        }
-    }
-
-    private static Bounds enumerateTitanium(String filename, Bounds bounds) throws Exception {
+    private static Bounds enumerateTitanium(Module world, Bounds bounds) throws Exception {
         long beg = System.currentTimeMillis();
-        Module world = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, filename);
         Command command = world.getAllCommands().get(0);
 
         A2KConverter a2k = new A2KConverter(world, A4Reporter.NOP, world.getAllReachableSigs(), command, options());
-        System.err.printf("    parsed file       : time=%10dms%n", System.currentTimeMillis() - beg);
         Bounds b = adjustBounds(bounds, a2k.getBounds());
 
         long tbeg = System.currentTimeMillis();
@@ -216,7 +219,7 @@ public class ExampleChenxi {
         long count = getTitaniumSolutions(translation, upper, lower);
         Bounds retval = buildBounds(upper, lower, translation);
         translation.cnf().free();
-        System.err.printf("ran file with Titanium: time=%10dms, count=%10d, file=%s%n", System.currentTimeMillis() - beg, count, filename);
+        System.err.printf("ran file with Titanium: time=%10dms, count=%10d%n", System.currentTimeMillis() - beg, count);
         return retval;
     }
 
@@ -233,6 +236,7 @@ public class ExampleChenxi {
             boolean isSat = cnf.solve();
             System.err.printf("    solved one        : time=%10dms%n", System.currentTimeMillis() - sbeg);
 
+            long lastlog = System.currentTimeMillis();
             while (isSat) {
                 IntSet track = new IntTreeSet();
                 for (int i = 1; i <= numVariables; i++) {
@@ -241,6 +245,11 @@ public class ExampleChenxi {
                 cnf.addClause(notModel);
                 isSat = cnf.solve();
                 ++count;
+                long now = System.currentTimeMillis();
+                if (now - lastlog >= Duration.ofMinutes(3).toMillis()) {
+                    System.err.printf("    enumerating: %10d%n", count);
+                    lastlog = now;
+                }
             }
             return count;
         } finally {
@@ -340,19 +349,29 @@ public class ExampleChenxi {
 
     public static void main(String[] args) throws Exception {
         primeTheSolver();
-        System.err.println("======================");
-        enumerateAlloy(args[0]);
+        Module world1 = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, args[0]);
+        System.err.println("======== " + args[0] + " ========");
+        Bounds b0 = enumerateAlloy(world1);
+        System.err.println(b0);
         System.err.println("----------------------");
-        Bounds b1 = enumerateTitanium(args[0], null);
+        //Bounds b1 = enumerateTitanium(world1, null);
+        //System.err.println(b1);
+        //System.err.println("----------------------");
+        Bounds b2 = enumerateChenxi(world1, null);
+        System.err.println(b2);
+
+        System.err.println();
+
+        Module world2 = CompUtil.parseEverything_fromFile(A4Reporter.NOP, null, args[1]);
+        System.err.println("======== " + args[1] + " ========");
+        Bounds c0 = enumerateAlloy(world2);
+        System.err.println(c0);
         System.err.println("----------------------");
-        Bounds b2 = enumerateChenxi(args[0], null);
-        System.err.println("======================");
-        enumerateAlloy(args[1]);
-        System.err.println("----------------------");
-        Bounds c1 = enumerateTitanium(args[1], b1);
-        System.err.println("----------------------");
-        Bounds c2 = enumerateChenxi(args[1], b2);
-        System.err.println("======================");
+        //Bounds c1 = enumerateTitanium(world2, b1);
+        //System.err.println(c1);
+        //System.err.println("----------------------");
+        Bounds c2 = enumerateChenxi(world2, b2);
+        System.err.println(c2);
     }
 
     private static A4Options options() {

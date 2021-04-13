@@ -64,6 +64,7 @@ public final class ExampleUsingTheCompiler {
      */
 
     public static void main(String[] args) throws Exception {
+        long count;
         // The visualizer (We will initialize it to nonnull when we visualize an
         // Alloy solution)
         VizGUI viz = null;
@@ -154,6 +155,7 @@ public final class ExampleUsingTheCompiler {
             Options o = a2K.getOptions();
 
             translTime = System.currentTimeMillis();
+            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
             firstTranslation = translation;
@@ -182,6 +184,7 @@ public final class ExampleUsingTheCompiler {
                 if (re.toString().contains("this")) {
                     TupleSet atoms = b.upperBound(re);
                     TupleSet lowerA = b.lowerBound(re);
+                    IntSet vars = translation.primaryVariables(re);
                     for (Object i : atoms) {
                         if (!lowerA.contains(i)) {
                             String head = re.name();
@@ -202,7 +205,7 @@ public final class ExampleUsingTheCompiler {
                 }
             }
             System.out.println("111");
-            while (isSat) {
+            for (count = 0; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
@@ -224,6 +227,7 @@ public final class ExampleUsingTheCompiler {
                 translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
+            System.err.printf("enumerated solutions: %d%n", count);
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -259,6 +263,7 @@ public final class ExampleUsingTheCompiler {
             formulaSet = f;
 
             translTime = System.currentTimeMillis();
+            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
 
@@ -278,7 +283,7 @@ public final class ExampleUsingTheCompiler {
             ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
 
             boolean firstSol = true;
-            while (isSat) {
+            for (count = 0; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
@@ -340,6 +345,8 @@ public final class ExampleUsingTheCompiler {
                 isSat = cnf.solve();
                 firstSol = false;
             }
+            System.err.printf("enumerated solutions: %d%n", count);
+
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -395,6 +402,7 @@ public final class ExampleUsingTheCompiler {
             Options o = a2K.getOptions();
 
             translTime = System.currentTimeMillis();
+            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
 
@@ -415,7 +423,7 @@ public final class ExampleUsingTheCompiler {
             ArrayList<Integer> notModelHelp = new ArrayList<Integer>();
 
             boolean e = true;
-            while (isSat) {
+            for (count = 0; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 //                solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
@@ -426,6 +434,8 @@ public final class ExampleUsingTheCompiler {
                 translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
+            System.err.printf("enumerated solutions: %d%n", count);
+
             sol = Solver.unsat(translation, stats);
             translation = null;
             //            System.out.println("set size is " + solutionCollection.size());
@@ -466,6 +476,10 @@ public final class ExampleUsingTheCompiler {
                     ArrayList<String> tep = new ArrayList<String>();
                     ArrayList<String> btep = new ArrayList<String>();
                     if (r.toString().contains("this/") && !r.toString().contains(".")) {
+                        TupleSet instanceTuples = instance.tuples(r.name());
+                        if (instanceTuples == null) {
+                            continue;
+                        }
                         String ss = instance.tuples(r.name()).toString();
                         String[] split = ss.split("\\[+|\\]+");
                         for (String s1 : split) {
@@ -610,6 +624,7 @@ public final class ExampleUsingTheCompiler {
             sb.append(String.valueOf((endAdj - startSolve)) + ",");
 
             translTime = System.currentTimeMillis();
+            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
 
@@ -632,7 +647,7 @@ public final class ExampleUsingTheCompiler {
 
             int[] notModel = new int[primaryVars];
 
-            while (isSat) {
+            for (count = 0; isSat; count++) {
                 sol = Solution.satisfiable(stats, translation.interpret());
                 //                solutionCollection.add(sol);
                 for (int i = 1; i <= primaryVars; i++) {
@@ -643,6 +658,8 @@ public final class ExampleUsingTheCompiler {
                 translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
+            System.err.printf("enumerated solutions: %d%n", count);
+
 
             endSolve = System.currentTimeMillis();
             //            System.out.println("time for getting all sol is " + (endSolve-startSolve));
@@ -748,6 +765,7 @@ public final class ExampleUsingTheCompiler {
             sb.append(String.valueOf((-startSolve + System.currentTimeMillis())) + ",");
 
             translTime = System.currentTimeMillis();
+            System.err.println(b);
             translation = Translator.translate(f, b, o);
             translTime = System.currentTimeMillis() - translTime;
             firstTranslation = translation;
@@ -773,7 +791,7 @@ public final class ExampleUsingTheCompiler {
             Solution sool;
             //sool = Solution.satisfiable(stats, translation.interpret());
 
-            while (isSat) {
+            for (count = 0; isSat; count++) {
                 //sol = Solution.satisfiable(stats, translation.interpret());
                 for (int i = 1; i <= primaryVars; i++) {
                     notModel[i - 1] = cnf.valueOf(i) ? -i : i;
@@ -783,6 +801,8 @@ public final class ExampleUsingTheCompiler {
                 translation.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
                 isSat = cnf.solve();
             }
+            System.err.printf("enumerated solutions: %d%n", count);
+
             //            System.out.println("time for get all solution is" + (System.currentTimeMillis() - startSolve));
             sb.append(String.valueOf((-startSolve + System.currentTimeMillis())));
             sb.append('\n');

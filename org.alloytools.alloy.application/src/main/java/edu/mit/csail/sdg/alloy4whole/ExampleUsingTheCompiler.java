@@ -542,7 +542,7 @@ public final class ExampleUsingTheCompiler {
         world = CompUtil.parseEverything_fromFile(rep, null, filenames);
 
         // second time Alloy
-        long startsSolve = System.currentTimeMillis();
+        startSolve = System.currentTimeMillis();
         ArrayList<Solution> ss = new ArrayList<Solution>();
         for (Command command : world.getAllCommands()) {
             // Execute the command

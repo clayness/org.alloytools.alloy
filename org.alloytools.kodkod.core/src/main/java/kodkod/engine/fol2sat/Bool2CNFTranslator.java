@@ -23,6 +23,7 @@ package kodkod.engine.fol2sat;
 
 import static kodkod.engine.bool.Operator.AND;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,6 +63,7 @@ import kodkod.util.ints.IntTreeSet;
 abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
 
     static Set<SATSolver> translate(BooleanFormula circuit, SATFactory factory, int numPrimaryVariables, LeafInterpreter interpreter) {
+        System.err.printf("[%s] starting slicing/canonicalization...", new Date());
         Map<BooleanValue,Set<BooleanVariable>> varset = new HashMap<>();
         long sliceStartTime = System.currentTimeMillis();
         List<List<BooleanFormula>> slicedBooleanFormulaSet = (new Decomposer(numPrimaryVariables + 1)).decompose(circuit, varset);
@@ -73,6 +75,7 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
             ++slices;
             (new Canonicalizer()).canonize(slice, varset);
         }
+        System.err.printf("[%d] finished slicing: %10dms%n", new Date(), System.currentTimeMillis() - sliceStartTime);
 
         //output.slices = slices;
         //output.canonT = System.currentTimeMillis() - time;

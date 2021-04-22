@@ -1,10 +1,12 @@
 package edu.mit.csail.sdg.alloy4whole;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.util.Date;
 
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.ErrorWarning;
@@ -21,6 +23,9 @@ import kodkod.engine.slicing.SATResult.Output;
 public class PlatinumTest {
 
     public static void main(String[] args) throws IOException {
+        PrintStream stdout = System.out;
+        System.setOut(System.err);
+
         A4Reporter rep = new SimpleReporter();
 
         A4Options opt = new A4Options();
@@ -31,12 +36,12 @@ public class PlatinumTest {
         PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + args[1]);
 
         Files.list(Paths.get(args[0])).filter(matcher::matches).sorted().forEachOrdered(path -> {
-            System.err.printf("solving with Platinum: %s%n", path);
+            System.err.printf("[%s] solving with Platinum: %s%n", new Date(), path);
             Module module = CompUtil.parseEverything_fromFile(rep, null, path.toString());
             A4Solution sol = TranslateAlloyToKodkod.execute_command(rep, module.getAllReachableSigs(), module.getAllCommands().get(0), opt);
             String sat = sol.satisfiable() ? "SATISFIABLE" : "UNSATISFIABLE";
             Output output = SATResult.getOutput();
-            System.out.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
+            stdout.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
         });
     }
 

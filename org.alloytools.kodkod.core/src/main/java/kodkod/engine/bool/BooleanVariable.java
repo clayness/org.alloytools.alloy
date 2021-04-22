@@ -35,8 +35,10 @@ import kodkod.util.ints.Ints;
  */
 public final class BooleanVariable extends BooleanFormula {
 
-    int         label;
-    private int hashcode;
+    int            label;
+    private int    hashcode;
+    public boolean visited;
+    public int     weight;
 
     public void setLabel(int newLabel) {
         this.label = newLabel;

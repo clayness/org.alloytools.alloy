@@ -21,6 +21,7 @@
  */
 package kodkod.engine.bool;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -35,7 +36,11 @@ import java.util.Set;
  */
 public abstract class BooleanFormula extends BooleanValue implements Iterable<BooleanFormula> {
 
-    private BooleanFormula negation;
+    private BooleanFormula      negation;
+    public Set<BooleanVariable> varSet = new HashSet<>();
+    public boolean              sliced;
+    public int                  weight;
+    public boolean              isVisited;
 
     /**
      * Constructs a boolean formula with the given negation.

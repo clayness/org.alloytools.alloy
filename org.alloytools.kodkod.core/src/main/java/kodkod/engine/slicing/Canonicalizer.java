@@ -6,13 +6,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import kodkod.engine.bool.BooleanAccumulator;
 import kodkod.engine.bool.BooleanFactory;
 import kodkod.engine.bool.BooleanFormula;
-import kodkod.engine.bool.BooleanValue;
 import kodkod.engine.bool.BooleanVariable;
 import kodkod.engine.bool.BooleanVisitor;
 import kodkod.engine.bool.ITEGate;
@@ -28,19 +26,17 @@ import kodkod.engine.config.Options;
  */
 public class Canonicalizer {
 
-    BooleanFactory                              buildFactory;
-    BooleanFormula[]                            sortedBf;
-    final private HashMap<Integer,Integer>      reverseLabelMap = new HashMap<>();    //map the normalized label to original label
-    final private HashMap<BooleanValue,Integer> weight          = new HashMap<>();
-    final private Set<BooleanValue>             visited         = new HashSet<>();
+    BooleanFactory                         buildFactory;
+    BooleanFormula[]                       sortedBf;
+    final private HashMap<Integer,Integer> reverseLabelMap = new HashMap<>();    //map the normalized label to original label
 
-    public void canonize(final List<BooleanFormula> booleanFormulaSet, final Map<BooleanValue,Set<BooleanVariable>> varSet) {
+    public void canonize(List<BooleanFormula> booleanFormulaSet) {
 
         Set<BooleanVariable> variableSet = new HashSet<>();
         for (BooleanFormula bf : booleanFormulaSet) {
             //System.out.print(bf.toString() + " ");
-            new BooleanFormulaCounter(bf, varSet.get(bf)).explore();
-            variableSet.addAll(varSet.get(bf));
+            new BooleanFormulaCounter(bf, bf.varSet).explore();
+            variableSet.addAll(bf.varSet);
         }
 
         final BooleanVariable[] sortedVars = variableSet.toArray(new BooleanVariable[variableSet.size()]);
@@ -48,7 +44,7 @@ public class Canonicalizer {
 
             @Override
             public int compare(BooleanVariable o1, BooleanVariable o2) {
-                return weight.getOrDefault(o1, 0) - weight.getOrDefault(o2, 0);
+                return o1.weight - o2.weight;
             }
         });
 
@@ -65,7 +61,7 @@ public class Canonicalizer {
 
             @Override
             public int compare(BooleanFormula o1, BooleanFormula o2) {
-                return weight.getOrDefault(o1, 0) - weight.getOrDefault(o2, 0);
+                return o1.weight - o2.weight;
             }
         });
 
@@ -107,7 +103,7 @@ public class Canonicalizer {
             }
             for (int l : reverseLabelMap.keySet()) {
                 int newLabel = reverseLabelMap.get(l);
-                LinkedList<Integer> labels = new LinkedList<>();
+                LinkedList<Integer> labels = new LinkedList();
                 labels.add(newLabel);
                 extendBooleanFormula.reverseLabelMapSet.put(l, labels);
             }
@@ -141,12 +137,14 @@ public class Canonicalizer {
             }
             if (bf instanceof MultiGate) {
                 //if haven't visited this gate yeah
-                if (visited.add(bf)) {
+                if (!bf.isVisited) {
                     ((MultiGate) bf).setLabel(++circuitLabel);
+                    bf.isVisited = true;
                 }
             } else if (bf instanceof ITEGate) {
-                if (visited.add(bf)) {
+                if (!bf.isVisited) {
                     ((ITEGate) bf).setLabel(++circuitLabel);
+                    bf.isVisited = true;
                 }
             }
             return circuitLabel;
@@ -157,8 +155,9 @@ public class Canonicalizer {
             for (BooleanFormula input : multigate) {
                 input.accept(this, null);
             }
-            if (visited.add(multigate)) {
+            if (!multigate.isVisited) {
                 multigate.setLabel(++circuitLabel);
+                multigate.isVisited = true;
             }
             return null;
         }
@@ -168,16 +167,18 @@ public class Canonicalizer {
             ite.input(0).accept(this, null);
             ite.input(1).accept(this, null);
             ite.input(2).accept(this, null);
-            if (visited.add(ite)) {
+            if (!ite.isVisited) {
                 ite.setLabel(++circuitLabel);
+                ite.isVisited = true;
             }
             return null;
         }
 
         @Override
         public Object visit(NotGate negation, Object arg) {
-            if (visited.add(negation)) {
+            if (!negation.visited) {
                 negation.input(0).accept(this, null);
+                negation.visited = true;
             }
             return null;
         }
@@ -209,7 +210,7 @@ public class Canonicalizer {
         @Override
         public Object visit(MultiGate multigate, Object arg) {
             for (BooleanFormula input : multigate) {
-                incrementWeight(bf, 1);
+                bf.weight++;
                 input.accept(this, null);
             }
             return null;
@@ -218,7 +219,7 @@ public class Canonicalizer {
         @Override
         public Object visit(ITEGate ite, Object arg) {
             int pre = (arg == null) ? 0 : (int) arg;
-            incrementWeight(bf, 1);
+            bf.weight++;
             ite.input(0).accept(this, pre + 1);
             ite.input(1).accept(this, pre + 1);
             ite.input(2).accept(this, pre + 1);
@@ -228,7 +229,7 @@ public class Canonicalizer {
         @Override
         public Object visit(NotGate negation, Object arg) {
             int pre = (arg == null) ? 0 : (int) arg;
-            incrementWeight(bf, 1);
+            bf.weight++;
             negation.input(0).accept(this, pre + 1);
             return null;
         }
@@ -236,18 +237,14 @@ public class Canonicalizer {
         @Override
         public Object visit(BooleanVariable variable, Object arg) {
             int pre = (arg == null) ? 0 : (int) arg;
-            incrementWeight(bf, 10);
-            if (visited.add(variable)) {
-                incrementWeight(variable, variable.label());
+            bf.weight += 10;
+            if (!variable.isVisited) {
+                variable.weight += variable.label();
                 varSet.add(variable);
+                variable.isVisited = true;
             } else
-                incrementWeight(variable, (pre * 1000));
+                variable.weight += pre * 1000;
             return null;
-        }
-
-        private void incrementWeight(BooleanValue bv, int inc) {
-            int current = weight.computeIfAbsent(bv, x -> 0);
-            weight.put(bv, current + inc);
         }
     }
 

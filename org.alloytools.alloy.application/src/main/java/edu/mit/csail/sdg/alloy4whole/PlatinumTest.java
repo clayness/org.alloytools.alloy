@@ -29,7 +29,7 @@ public class PlatinumTest {
         A4Reporter rep = new SimpleReporter();
 
         A4Options opt = new A4Options();
-        opt.solver = SatSolver.MiniSatJNI;
+        opt.solver = SatSolver.SAT4J;
 
         int cmd = args.length < 3 ? 0 : Integer.parseInt(args[2]);
 

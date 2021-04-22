@@ -24,17 +24,14 @@ package kodkod.engine.fol2sat;
 import static kodkod.engine.bool.Operator.AND;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import kodkod.engine.bool.BooleanConstant;
 import kodkod.engine.bool.BooleanFactory;
 import kodkod.engine.bool.BooleanFormula;
-import kodkod.engine.bool.BooleanValue;
 import kodkod.engine.bool.BooleanVariable;
 import kodkod.engine.bool.BooleanVisitor;
 import kodkod.engine.bool.ITEGate;
@@ -63,19 +60,21 @@ import kodkod.util.ints.IntTreeSet;
 abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
 
     static Set<SATSolver> translate(BooleanFormula circuit, SATFactory factory, int numPrimaryVariables, LeafInterpreter interpreter) {
-        System.err.printf("[%s] starting slicing/canonicalization...", new Date());
-        Map<BooleanValue,Set<BooleanVariable>> varset = new HashMap<>();
+        System.err.printf("[%s] starting slicing/canonicalization (%d primary vars)...", new Date(), numPrimaryVariables);
         long sliceStartTime = System.currentTimeMillis();
-        List<List<BooleanFormula>> slicedBooleanFormulaSet = (new Decomposer(numPrimaryVariables + 1)).decompose(circuit, varset);
-        long sliceTime = System.currentTimeMillis() - sliceStartTime;
-        //output.sliceT = sliceTime;
-        long time = System.currentTimeMillis();
-        int slices = 0;
-        for (List<BooleanFormula> slice : slicedBooleanFormulaSet) {
-            ++slices;
-            (new Canonicalizer()).canonize(slice, varset);
+        try {
+            List<List<BooleanFormula>> slicedBooleanFormulaSet = (new Decomposer(numPrimaryVariables + 1)).decompose(circuit);
+            long sliceTime = System.currentTimeMillis() - sliceStartTime;
+            //output.sliceT = sliceTime;
+            long time = System.currentTimeMillis();
+            int slices = 0;
+            for (List<BooleanFormula> slice : slicedBooleanFormulaSet) {
+                ++slices;
+                (new Canonicalizer()).canonize(slice);
+            }
+        } finally {
+            System.err.printf("[%s] finished slicing: %10dms%n", new Date(), System.currentTimeMillis() - sliceStartTime);
         }
-        System.err.printf("[%d] finished slicing: %10dms%n", new Date(), System.currentTimeMillis() - sliceStartTime);
 
         //output.slices = slices;
         //output.canonT = System.currentTimeMillis() - time;
@@ -144,22 +143,28 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
      *         meaning(cnf.clauses)
      */
     static SATSolver translate(final BooleanFormula circuit, final int maxPrimaryVar, final SATFactory factory) {
-        final int maxLiteral = StrictMath.abs(circuit.label());
-        final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) {
+        System.err.printf("[%s] starting regular translation (%d primary vars)...", new Date(), maxPrimaryVar + 1);
+        long transStartTime = System.currentTimeMillis();
+        try {
+            final int maxLiteral = StrictMath.abs(circuit.label());
+            final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) {
 
-            final PolarityDetector pdetector = (new PolarityDetector(maxPrimaryVar, maxLiteral)).apply(circuit);
+                final PolarityDetector pdetector = (new PolarityDetector(maxPrimaryVar, maxLiteral)).apply(circuit);
 
-            @Override
-            boolean positive(int label) {
-                return pdetector.positive(label);
-            }
+                @Override
+                boolean positive(int label) {
+                    return pdetector.positive(label);
+                }
 
-            @Override
-            boolean negative(int label) {
-                return pdetector.negative(label);
-            }
-        };
-        return translator.translate(circuit, maxPrimaryVar).solver;
+                @Override
+                boolean negative(int label) {
+                    return pdetector.negative(label);
+                }
+            };
+            return translator.translate(circuit, maxPrimaryVar).solver;
+        } finally {
+            System.err.printf("[%s] finished regular translation: %10dms%n", new Date(), System.currentTimeMillis() - transStartTime);
+        }
     }
 
     /**

@@ -38,6 +38,7 @@ import kodkod.util.ints.Ints;
 public final class NotGate extends BooleanFormula {
 
     private final int hashcode;
+    public boolean    visited;
 
     /**
      * Constructs a new NotGate with the given formula as its input.

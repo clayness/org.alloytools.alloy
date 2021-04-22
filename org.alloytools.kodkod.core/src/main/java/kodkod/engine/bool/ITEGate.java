@@ -42,7 +42,12 @@ import kodkod.util.ints.Ints;
 public final class ITEGate extends BooleanFormula {
 
     private final BooleanFormula[] inputs;
-    private final int              label, hashcode, labelhash;
+    private int                    label, hashcode, labelhash;
+
+    public void setLabel(int newLabel) {
+        this.label = newLabel;
+        this.labelhash = Ints.superFastHash(newLabel);
+    }
 
     /**
      * Constructs a new ITEGate from the given formulas and label.

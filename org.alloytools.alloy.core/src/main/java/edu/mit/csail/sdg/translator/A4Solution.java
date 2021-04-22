@@ -1367,11 +1367,11 @@ public final class A4Solution {
 
             @Override
             public void solvingCNF(int primaryVars, int vars, int clauses) {
-                if (solved[0])
-                    return;
-                else
-                    solved[0] = true; // initially solved[0] is true, so we
-                                     // won't report the # of vars/clauses
+//                if (solved[0])
+//                    return;
+//                else
+//                    solved[0] = true; // initially solved[0] is true, so we
+//                                     // won't report the # of vars/clauses
                 if (rep != null)
                     rep.solve(primaryVars, vars, clauses);
             }

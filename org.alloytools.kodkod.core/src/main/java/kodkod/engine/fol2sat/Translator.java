@@ -807,7 +807,8 @@ public final class Translator {
             final Map<Relation,IntSet> varUsage = interpreter.vars();
             interpreter = null; // enable gc
             final SATSolver cnf = Bool2CNFTranslator.translate(circuit, maxPrimaryVar, options.solver());
-            return new Translation.Whole(completeBounds(), options, cnf, varUsage, maxPrimaryVar, log);
+            final Set<SATSolver> cnfs = Bool2CNFTranslator.translate(circuit, options.solver(), maxPrimaryVar, interpreter);
+            return new Translation.Whole(completeBounds(), options, cnf, cnfs, varUsage, maxPrimaryVar, log);
         }
     }
 

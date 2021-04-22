@@ -12,6 +12,8 @@ import kodkod.engine.fol2sat.Translation;
 import kodkod.engine.fol2sat.Translator;
 import kodkod.engine.satlab.SATAbortedException;
 import kodkod.engine.satlab.SATSolver;
+import kodkod.engine.slicing.ExtendBooleanFormula;
+import kodkod.engine.slicing.SATResult;
 import kodkod.instance.Bounds;
 import kodkod.instance.TupleSet;
 
@@ -33,6 +35,7 @@ public final class SolutionIterator implements Iterator<Solution> {
         this.translTime = System.currentTimeMillis();
         this.translation = Translator.translate(formula, bounds, options);
         this.translTime = System.currentTimeMillis() - translTime;
+        SATResult.translate(this.translTime);
         this.trivial = 0;
     }
 
@@ -84,33 +87,42 @@ public final class SolutionIterator implements Iterator<Solution> {
     private Solution nextNonTrivialSolution() {
         final Translation.Whole transl = translation;
 
-        final SATSolver cnf = transl.cnf();
-        final int primaryVars = transl.numPrimaryVariables();
-
-        transl.options().reporter().solvingCNF(primaryVars, cnf.numberOfVariables(), cnf.numberOfClauses());
+        SATResult.run();
+        boolean isSat = true;
 
         final long startSolve = System.currentTimeMillis();
-        final boolean isSat = cnf.solve();
-        final long endSolve = System.currentTimeMillis();
-
-        final Statistics stats = new Statistics(transl, translTime, endSolve - startSolve);
-        final Solution sol;
-
-        if (isSat) {
-            // extract the current solution; can't use the sat(..) method
-            // because it frees the sat solver
-            sol = Solution.satisfiable(stats, transl.interpret());
-            // add the negation of the current model to the solver
-            final int[] notModel = new int[primaryVars];
-            for (int i = 1; i <= primaryVars; i++) {
-                notModel[i - 1] = cnf.valueOf(i) ? -i : i;
+        for (SATSolver cnf : transl.getSolverSet()) {
+            ExtendBooleanFormula bf = SATResult.getSolverFormula(cnf);
+            if (SATResult.contains(bf)) {
+                isSat = isSat && SATResult.getBooleanFormulaResult(bf);
+            } else {
+                transl.options().reporter().solvingCNF(bf.numPrimiryVariables, cnf.numberOfVariables(), cnf.numberOfClauses());
+                boolean formulaSat = cnf.solve();
+                SATResult.putBooleanFormula(bf, formulaSat);
+                isSat = isSat && formulaSat;
             }
-            cnf.addClause(notModel);
-        } else {
-            sol = Solver.unsat(transl, stats); // this also frees up solver
-                                              // resources, if any
-            translation = null; // unsat, no more solutions
+            SATResult.addPrimary(bf.numPrimiryVariables);
+            SATResult.addVars(cnf.numberOfVariables());
+            SATResult.addClauses(cnf.numberOfClauses());
+            cnf.free();
         }
+        final long endSolve = System.currentTimeMillis();
+        SATResult.solveTime(endSolve - startSolve);
+
+        //output.whole = System.currentTimeMillis() - wholeTime;
+        //output.repeat = SATResult.currentRepeatedClauses == 0 ? SATResult.repeatedClauses : SATResult.currentRepeatedClauses;
+
+        Solution sol;
+        Statistics stats = new Statistics(translation, translTime, endSolve - startSolve);
+        if (isSat) {
+            SATSolver cnf = translation.cnf();
+            transl.options().reporter().solvingCNF(transl.numPrimaryVariables(), cnf.numberOfVariables(), cnf.numberOfClauses());
+            translation.cnf().solve();
+            sol = Solution.satisfiable(stats, translation.interpret());
+        } else {
+            sol = Solver.unsat(translation, stats);
+        }
+        translation = null;
         return sol;
     }
 

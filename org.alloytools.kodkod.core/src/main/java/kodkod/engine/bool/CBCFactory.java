@@ -75,7 +75,8 @@ final class CBCFactory {
      * @invariant all i: [0..2] | c[i].op.ordinal = i
      */
     private final CacheSet<BooleanFormula>[] cache;
-    private int                              label, cmpMax;
+    int                                      label;
+    private int                              cmpMax;
 
     /**
      * Constructs a CircuitFactory using the given max comparison parameter,
@@ -727,81 +728,81 @@ final class CBCFactory {
      * method.
      */
     private final Assembler[] ASSEMBLERS = {
-                                            JoJ,                                                                                              /*
-                                                                                                                                               * AND
-                                                                                                                                               * op
-                                                                                                                                               * AND
-                                                                                                                                               */
-                                            AoO,                                                                                              /*
-                                                                                                                                               * AND
-                                                                                                                                               * op
-                                                                                                                                               * OR
-                                                                                                                                               */
-                                            JoI,                                                                                              /*
-                                                                                                                                               * AND
-                                                                                                                                               * op
-                                                                                                                                               * ITE
-                                                                                                                                               */
-                                            JoN,                                                                                              /*
-                                                                                                                                               * AND
-                                                                                                                                               * op
-                                                                                                                                               * NOT
-                                                                                                                                               */
-                                            JoX,                                                                                              /*
-                                                                                                                                               * AND
-                                                                                                                                               * op
-                                                                                                                                               * VAR
-                                                                                                                                               */
-                                            JoJ,                                                                                              /*
-                                                                                                                                               * OR
-                                                                                                                                               * op
-                                                                                                                                               * OR
-                                                                                                                                               */
-                                            JoI,                                                                                              /*
-                                                                                                                                               * OR
-                                                                                                                                               * op
-                                                                                                                                               * ITE
-                                                                                                                                               */
-                                            JoN,                                                                                              /*
-                                                                                                                                               * OR
-                                                                                                                                               * op
-                                                                                                                                               * NOT
-                                                                                                                                               */
-                                            JoX,                                                                                              /*
-                                                                                                                                               * OR
-                                                                                                                                               * op
-                                                                                                                                               * VAR
-                                                                                                                                               */
-                                            XoX,                                                                                              /*
-                                                                                                                                               * ITE
-                                                                                                                                               * op
-                                                                                                                                               * ITE
-                                                                                                                                               */
-                                            IoN,                                                                                              /*
-                                                                                                                                               * ITE
-                                                                                                                                               * op
-                                                                                                                                               * NOT
-                                                                                                                                               */
-                                            IoV,                                                                                              /*
-                                                                                                                                               * ITE
-                                                                                                                                               * op
-                                                                                                                                               * VAR
-                                                                                                                                               */
-                                            NoN,                                                                                              /*
-                                                                                                                                               * NOT
-                                                                                                                                               * op
-                                                                                                                                               * NOT
-                                                                                                                                               */
-                                            NoV,                                                                                              /*
-                                                                                                                                               * NOT
-                                                                                                                                               * op
-                                                                                                                                               * VAR
-                                                                                                                                               */
-                                            XoX                                                                                               /*
-                                                                                                                                               * VAR
-                                                                                                                                               * op
-                                                                                                                                               * VAR
-                                                                                                                                               */
+                                            JoJ,                                                                                                 /*
+                                                                                                                                                  * AND
+                                                                                                                                                  * op
+                                                                                                                                                  * AND
+                                                                                                                                                  */
+                                            AoO,                                                                                                 /*
+                                                                                                                                                  * AND
+                                                                                                                                                  * op
+                                                                                                                                                  * OR
+                                                                                                                                                  */
+                                            JoI,                                                                                                 /*
+                                                                                                                                                  * AND
+                                                                                                                                                  * op
+                                                                                                                                                  * ITE
+                                                                                                                                                  */
+                                            JoN,                                                                                                 /*
+                                                                                                                                                  * AND
+                                                                                                                                                  * op
+                                                                                                                                                  * NOT
+                                                                                                                                                  */
+                                            JoX,                                                                                                 /*
+                                                                                                                                                  * AND
+                                                                                                                                                  * op
+                                                                                                                                                  * VAR
+                                                                                                                                                  */
+                                            JoJ,                                                                                                 /*
+                                                                                                                                                  * OR
+                                                                                                                                                  * op
+                                                                                                                                                  * OR
+                                                                                                                                                  */
+                                            JoI,                                                                                                 /*
+                                                                                                                                                  * OR
+                                                                                                                                                  * op
+                                                                                                                                                  * ITE
+                                                                                                                                                  */
+                                            JoN,                                                                                                 /*
+                                                                                                                                                  * OR
+                                                                                                                                                  * op
+                                                                                                                                                  * NOT
+                                                                                                                                                  */
+                                            JoX,                                                                                                 /*
+                                                                                                                                                  * OR
+                                                                                                                                                  * op
+                                                                                                                                                  * VAR
+                                                                                                                                                  */
+                                            XoX,                                                                                                 /*
+                                                                                                                                                  * ITE
+                                                                                                                                                  * op
+                                                                                                                                                  * ITE
+                                                                                                                                                  */
+                                            IoN,                                                                                                 /*
+                                                                                                                                                  * ITE
+                                                                                                                                                  * op
+                                                                                                                                                  * NOT
+                                                                                                                                                  */
+                                            IoV,                                                                                                 /*
+                                                                                                                                                  * ITE
+                                                                                                                                                  * op
+                                                                                                                                                  * VAR
+                                                                                                                                                  */
+                                            NoN,                                                                                                 /*
+                                                                                                                                                  * NOT
+                                                                                                                                                  * op
+                                                                                                                                                  * NOT
+                                                                                                                                                  */
+                                            NoV,                                                                                                 /*
+                                                                                                                                                  * NOT
+                                                                                                                                                  * op
+                                                                                                                                                  * VAR
+                                                                                                                                                  */
+                                            XoX                                                                                                  /*
+                                                                                                                                                  * VAR
+                                                                                                                                                  * op
+                                                                                                                                                  * VAR
+                                                                                                                                                  */
     };
 
 }

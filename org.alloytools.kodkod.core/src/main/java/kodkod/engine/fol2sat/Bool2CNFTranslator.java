@@ -23,9 +23,17 @@ package kodkod.engine.fol2sat;
 
 import static kodkod.engine.bool.Operator.AND;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import kodkod.engine.bool.BooleanConstant;
 import kodkod.engine.bool.BooleanFactory;
 import kodkod.engine.bool.BooleanFormula;
+import kodkod.engine.bool.BooleanValue;
 import kodkod.engine.bool.BooleanVariable;
 import kodkod.engine.bool.BooleanVisitor;
 import kodkod.engine.bool.ITEGate;
@@ -34,6 +42,10 @@ import kodkod.engine.bool.NotGate;
 import kodkod.engine.bool.Operator;
 import kodkod.engine.satlab.SATFactory;
 import kodkod.engine.satlab.SATSolver;
+import kodkod.engine.slicing.Canonicalizer;
+import kodkod.engine.slicing.Decomposer;
+import kodkod.engine.slicing.ExtendBooleanFormula;
+import kodkod.engine.slicing.SATResult;
 import kodkod.util.ints.IntSet;
 import kodkod.util.ints.IntTreeSet;
 
@@ -48,6 +60,70 @@ import kodkod.util.ints.IntTreeSet;
  * @author Emina Torlak
  */
 abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
+
+    static Set<SATSolver> translate(BooleanFormula circuit, SATFactory factory, int numPrimaryVariables, LeafInterpreter interpreter) {
+        Map<BooleanValue,Set<BooleanVariable>> varset = new HashMap<>();
+        long sliceStartTime = System.currentTimeMillis();
+        List<List<BooleanFormula>> slicedBooleanFormulaSet = (new Decomposer(numPrimaryVariables + 1)).decompose(circuit, varset);
+        long sliceTime = System.currentTimeMillis() - sliceStartTime;
+        //output.sliceT = sliceTime;
+        long time = System.currentTimeMillis();
+        int slices = 0;
+        for (List<BooleanFormula> slice : slicedBooleanFormulaSet) {
+            ++slices;
+            (new Canonicalizer()).canonize(slice, varset);
+        }
+
+        //output.slices = slices;
+        //output.canonT = System.currentTimeMillis() - time;
+        //output.vars = numPrimaryVariables;
+        Set<SATSolver> solverSet = new HashSet<>();
+        int max = 0;
+        int maxClause = 0;
+        Iterator<ExtendBooleanFormula> var22 = SATResult.getUnsolvedFormulas().iterator();
+
+        while (var22.hasNext()) {
+            ExtendBooleanFormula independentBooleanFormula = var22.next();
+            if (independentBooleanFormula.numPrimiryVariables > max) {
+                max = independentBooleanFormula.numPrimiryVariables;
+            }
+
+            SATSolver solver = factory.instance();
+            Bool2CNFTranslator translator = new Bool2CNFTranslator(solver) {
+            };
+            if (independentBooleanFormula.booleanFormulaForm.op() != Operator.AND) {
+                solver.addClause(independentBooleanFormula.booleanFormulaForm.accept(translator, (Object) null));
+            } else {
+                Iterator<BooleanFormula> var19 = independentBooleanFormula.booleanFormulaForm.iterator();
+
+                BooleanFormula input;
+                while (var19.hasNext()) {
+                    input = var19.next();
+                    input.accept(translator, (Object) null);
+                }
+
+                var19 = independentBooleanFormula.booleanFormulaForm.iterator();
+
+                while (var19.hasNext()) {
+                    input = var19.next();
+                    translator.unaryClause[0] = input.label();
+                    solver.addClause(translator.unaryClause);
+                }
+            }
+
+            if (solver.numberOfClauses() > maxClause) {
+                maxClause = solver.numberOfClauses();
+            }
+
+            solverSet.add(solver);
+            SATResult.setSolverFormula(solver, independentBooleanFormula);
+        }
+
+        //output.largestSlice = max;
+        //output.largestClause = maxClause;
+        return solverSet;
+    }
+
 
     /**
      * Creates a new instance of SATSolver using the provided factory and uses it to
@@ -116,7 +192,8 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
      */
     static Bool2CNFTranslator translateIncremental(final BooleanFormula circuit, final int maxPrimaryVar, final SATFactory factory) {
         assert factory.incremental();
-        final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) {};
+        final Bool2CNFTranslator translator = new Bool2CNFTranslator(factory.instance()) {
+        };
         return translator.translate(circuit, maxPrimaryVar);
     }
 
@@ -134,7 +211,8 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
      */
     static Bool2CNFTranslator translateIncremental(BooleanConstant value, final SATFactory factory) {
         assert factory.incremental();
-        return new Bool2CNFTranslator(translate(value, factory)) {};
+        return new Bool2CNFTranslator(translate(value, factory)) {
+        };
     }
 
     /**

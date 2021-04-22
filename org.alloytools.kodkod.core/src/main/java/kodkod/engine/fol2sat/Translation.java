@@ -21,6 +21,7 @@
  */
 package kodkod.engine.fol2sat;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -242,6 +243,7 @@ public abstract class Translation {
         private final Map<Relation,IntSet> primaryVarUsage;
         private final TranslationLog       log;
         private final int                  maxPrimaryVar;
+        private final Set<SATSolver>       solverSet;
 
         /**
          * Creates a whole translation using the given bounds, options, solver, var map,
@@ -258,9 +260,24 @@ public abstract class Translation {
         Whole(Bounds bounds, Options options, SATSolver solver, Map<Relation,IntSet> varUsage, int maxPrimaryVar, TranslationLog log) {
             super(bounds, options);
             this.solver = solver;
+            this.solverSet = new HashSet<>(1);
+            this.solverSet.add(solver);
             this.log = log;
             this.maxPrimaryVar = maxPrimaryVar;
             this.primaryVarUsage = varUsage;
+        }
+
+        Whole(Bounds bounds, Options options, SATSolver solver, Set<SATSolver> solverSet, Map<Relation,IntSet> varUsage, int maxPrimaryVar, TranslationLog log) {
+            super(bounds, options);
+            this.solver = solver;
+            this.solverSet = solverSet;
+            this.log = log;
+            this.maxPrimaryVar = maxPrimaryVar;
+            this.primaryVarUsage = varUsage;
+        }
+
+        public Set<SATSolver> getSolverSet() {
+            return solverSet;
         }
 
         /**

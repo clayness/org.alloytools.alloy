@@ -20,7 +20,8 @@ Export-Package: \
 	kodkod.instance,\
 	kodkod.util.collections,\
 	kodkod.util.ints,\
-	kodkod.util.nodes
+	kodkod.util.nodes,\
+	kodkod.engine.slicing
 
 -buildpath: \
 	org.sat4j.core,\

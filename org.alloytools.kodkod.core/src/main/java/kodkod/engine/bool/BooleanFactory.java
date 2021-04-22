@@ -53,6 +53,10 @@ import kodkod.util.ints.IntSet;
  */
 public abstract class BooleanFactory {
 
+    public void setLabel(int newLabel) {
+        this.circuits.label = newLabel;
+    }
+
     /**
      * A circuit factory used internally to assemble circuits.
      */

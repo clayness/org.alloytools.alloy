@@ -40,7 +40,13 @@ public abstract class MultiGate extends BooleanFormula {
 
     final Operator.Nary op;
 
-    private final int   label, labelhash, hashcode;
+    private int         label, labelhash, hashcode;
+
+    public void setLabel(int newLabel) {
+        this.label = newLabel;
+        this.labelhash = Ints.superFastHash(newLabel);
+        this.hashcode = this.toString().hashCode();
+    }
 
     /**
      * Constructs a new MultiGate gate with the given operator and label.

@@ -2,13 +2,9 @@ package edu.mit.csail.sdg.alloy4whole;
 
 import java.io.IOException;
 import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.ErrorWarning;
@@ -29,22 +25,17 @@ public class PlatinumTest {
         A4Options opt = new A4Options();
         //opt.solver = SatSolver.MiniSatJNI;
 
-        int cmd = args.length < 2 ? 0 : Integer.parseInt(args[1]);
+        int cmd = args.length < 3 ? 0 : Integer.parseInt(args[2]);
 
-        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + args[0]);
-        Files.walkFileTree(Paths.get("."), new SimpleFileVisitor<Path>() {
+        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + args[1]);
 
-            @Override
-            public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
-                if (matcher.matches(path.getFileName())) {
-                    Module module = CompUtil.parseEverything_fromFile(rep, null, path.toString());
-                    A4Solution sol = TranslateAlloyToKodkod.execute_command(rep, module.getAllReachableSigs(), module.getAllCommands().get(0), opt);
-                    String sat = sol.satisfiable() ? "SATISFIABLE" : "UNSATISFIABLE";
-                    Output output = SATResult.getOutput();
-                    System.out.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
-                }
-                return FileVisitResult.CONTINUE;
-            }
+        Files.list(Paths.get(args[0])).filter(matcher::matches).sorted().forEachOrdered(path -> {
+            System.err.printf("solving with Platinum: %s%n", path);
+            Module module = CompUtil.parseEverything_fromFile(rep, null, path.toString());
+            A4Solution sol = TranslateAlloyToKodkod.execute_command(rep, module.getAllReachableSigs(), module.getAllCommands().get(0), opt);
+            String sat = sol.satisfiable() ? "SATISFIABLE" : "UNSATISFIABLE";
+            Output output = SATResult.getOutput();
+            System.out.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
         });
     }
 

@@ -60,7 +60,7 @@ import kodkod.util.ints.IntTreeSet;
 abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
 
     static Set<SATSolver> translate(BooleanFormula circuit, SATFactory factory, int numPrimaryVariables, LeafInterpreter interpreter) {
-        System.err.printf("[%s] starting slicing/canonicalization (%d primary vars)...", new Date(), numPrimaryVariables);
+        System.err.printf("[%s] starting slicing/canonicalization (%d primary vars)...%n", new Date(), numPrimaryVariables);
         long sliceStartTime = System.currentTimeMillis();
         try {
             List<List<BooleanFormula>> slicedBooleanFormulaSet = (new Decomposer(numPrimaryVariables + 1)).decompose(circuit);
@@ -143,7 +143,7 @@ abstract class Bool2CNFTranslator implements BooleanVisitor<int[],Object> {
      *         meaning(cnf.clauses)
      */
     static SATSolver translate(final BooleanFormula circuit, final int maxPrimaryVar, final SATFactory factory) {
-        System.err.printf("[%s] starting regular translation (%d primary vars)...", new Date(), maxPrimaryVar + 1);
+        System.err.printf("[%s] starting regular translation (%d primary vars)...%n", new Date(), maxPrimaryVar + 1);
         long transStartTime = System.currentTimeMillis();
         try {
             final int maxLiteral = StrictMath.abs(circuit.label());

@@ -12,6 +12,7 @@ import edu.mit.csail.sdg.ast.Command;
 import edu.mit.csail.sdg.ast.Module;
 import edu.mit.csail.sdg.parser.CompUtil;
 import edu.mit.csail.sdg.translator.A4Options;
+import edu.mit.csail.sdg.translator.A4Options.SatSolver;
 import edu.mit.csail.sdg.translator.A4Solution;
 import edu.mit.csail.sdg.translator.TranslateAlloyToKodkod;
 import kodkod.engine.slicing.SATResult;
@@ -23,7 +24,7 @@ public class PlatinumTest {
         A4Reporter rep = new SimpleReporter();
 
         A4Options opt = new A4Options();
-        //opt.solver = SatSolver.MiniSatJNI;
+        opt.solver = SatSolver.MiniSatJNI;
 
         int cmd = args.length < 3 ? 0 : Integer.parseInt(args[2]);
 

@@ -1,10 +1,14 @@
 package edu.mit.csail.sdg.alloy4whole;
 
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 
 import edu.mit.csail.sdg.alloy4.A4Reporter;
 import edu.mit.csail.sdg.alloy4.ErrorWarning;
@@ -27,14 +31,20 @@ public class PlatinumTest {
 
         int cmd = args.length < 2 ? 0 : Integer.parseInt(args[1]);
 
-        Path filename = Paths.get(args[0]);
-        Stream<Path> files = Files.isDirectory(filename) ? Files.list(filename) : Stream.of(filename);
-        files.forEachOrdered(f -> {
-            Module module = CompUtil.parseEverything_fromFile(rep, null, f.toString());
-            A4Solution sol = TranslateAlloyToKodkod.execute_command(rep, module.getAllReachableSigs(), module.getAllCommands().get(0), opt);
-            String sat = sol.satisfiable() ? "SATISFIABLE" : "UNSATISFIABLE";
-            Output output = SATResult.getOutput();
-            System.out.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
+        PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + args[0]);
+        Files.walkFileTree(Paths.get("."), new SimpleFileVisitor<Path>() {
+
+            @Override
+            public FileVisitResult visitFile(Path path, BasicFileAttributes basicFileAttributes) throws IOException {
+                if (matcher.matches(path.getFileName())) {
+                    Module module = CompUtil.parseEverything_fromFile(rep, null, path.toString());
+                    A4Solution sol = TranslateAlloyToKodkod.execute_command(rep, module.getAllReachableSigs(), module.getAllCommands().get(0), opt);
+                    String sat = sol.satisfiable() ? "SATISFIABLE" : "UNSATISFIABLE";
+                    Output output = SATResult.getOutput();
+                    System.out.printf("%s,%d,%d,%d,%d,%d%n", sat, output.numPrimary, output.numVars, output.numClauses, output.transTime, output.solveTime);
+                }
+                return FileVisitResult.CONTINUE;
+            }
         });
     }
 

@@ -196,7 +196,8 @@ fact {all d: DomainModel    | d in DomainDecision.domainModel}
 fact {all c: Correspondance | all d: DomainDecision | c.domainModel in d.domainModel}
 fact {all c: Correspondance | all d: DomainDecision | d.domainModel in c.domainModel}
 assert a {all d: DomainModel | Insert_Card in d.state}
-check a for 20
+//check a for 20
+run {} for 2
 
 
 

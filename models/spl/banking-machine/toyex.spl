@@ -1,0 +1,37 @@
+BankingMachine
+
+FM {
+	Feature Deposit
+	Feature Withdraw }
+
+State_Chart DM {	
+	
+State Insert_Card
+State Insert_Pin
+State Insert_Amount
+State Take_Cash
+State Deposit_Cash
+State Take_Receipt
+
+Transition T1 State Insert_Card to State Insert_Pin
+Transition T2 State Insert_Pin to State Insert_Amount 
+Transition T3 State Insert_Amount to State Take_Cash
+Transition T4 State Insert_Amount to State Deposit_Cash
+Transition T5 State Take_Cash to State Take_Receipt
+Transition T6 State Deposit_Cash to State Take_Receipt, 
+
+T1 in Domain_Model
+T2 in Domain_Model
+}
+
+DecM  {
+	Multitask 
+	Receipt
+	
+DomainDecision Receipt implies T5 in Domain_Model or T6 in Domain_Model else not in Domain_Model
+FeatureDecision Multitask implies Deposit in Feature_Model
+FeatureDecision Multitask implies Withdraw in Feature_Model
+Correspondence Deposit in Feature_Model implies T4 in Domain_Model else not in Domain_Model
+Correspondence Withdraw in Feature_Model implies T5 in Domain_Model else not in Domain_Model}
+
+Prop h {ForAny Decision_Model ForAny Feature_Model State Receipt in Domain_Model}

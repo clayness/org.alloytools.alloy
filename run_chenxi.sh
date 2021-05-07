@@ -25,7 +25,9 @@ done
 set -- "${ARGS[@]}"
 
 # build the jars, just in case
-sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java 
+if command -v update-alternatives &>/dev/null ; then
+  sudo update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java &>/dev/null
+fi
 ./gradlew assemble --quiet --console plain
 if [ $? -gt 0 ]; then
   echo "  error: could not build .jar files"

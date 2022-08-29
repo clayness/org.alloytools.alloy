@@ -5,8 +5,7 @@
     @${repo;slf4j.api}, \
 
 -buildpath: \
-	org.alloytools:pardinus.core;version='1.3.0',\
-	org.alloytools:pardinus.nativesat;version='1.3.0',\
+	/Users/claystevens/Research/alloy6/Pardinus/lib/pardinus.jar;version=file,\
 	org.eclipse.jdt.annotation,\
 	aQute.libg,\
 	org.alloytools.api,\

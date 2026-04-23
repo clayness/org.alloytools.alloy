@@ -3,6 +3,7 @@
 # All native code will end up in ../native/OS/ARCH. OS=[darwin,linux,windows], ARCH=[amd64,arm64]
 #
 
+
 DIRS = native/linux/amd64 native/windows/amd64 native/darwin/amd64 native/darwin/arm64
 REPOS= minisat glucose lingeling minisatprover
 CLASSPATH = ../target/classes:../../org.alloytools.pardinus.core/target/classes
@@ -11,21 +12,26 @@ REPOS_PATHS = $(addsuffix /repo/.git/config,$(REPOS))
 
 .PHONY: all native darwin linux windows go
 
-install: clean darwin linux windows
-	-rm -rf ../native
+install: clean darwin linux windows copy
+
+copy:
+	cp -rf dependencies/* native/
 	cp -rf native ..
 
 clean:
-	rm -rf build native headers $(addsuffix /repo,$(REPOS))
+	rm -rf build native headers $(addsuffix /repo,$(REPOS)) ./native
 
 native : 
 	mkdir -p $(DIRS)
 
 headers:
 	mkdir headers
-	javah -classpath $(CLASSPATH) -o headers/AlloyGlucose.h 		org.alloytools.solvers.natv.glucose.Glucose
-	javah -classpath $(CLASSPATH) -o headers/AlloyMiniSat.h 		org.alloytools.solvers.natv.minisat.MiniSat
-	javah -classpath $(CLASSPATH) -o headers/AlloyMiniSatProver.h 	org.alloytools.solvers.natv.minisatprover.MiniSatProver
+	javac -classpath $(CLASSPATH) -h . -d ../target ../src/main/java/org/alloytools/solvers/natv/glucose/Glucose.java
+	mv org_alloytools_solvers_natv_glucose_Glucose.h headers/AlloyGlucose.h
+	javac -classpath $(CLASSPATH) -h . -d ../target ../src/main/java/org/alloytools/solvers/natv/minisat/MiniSat.java
+	mv org_alloytools_solvers_natv_minisat_MiniSat.h headers/AlloyMiniSat.h
+	javac -classpath $(CLASSPATH) -h . -d ../target ../src/main/java/org/alloytools/solvers/natv/minisatprover/MiniSatProver.java
+	mv org_alloytools_solvers_natv_minisatprover_MiniSatProver.h headers/AlloyMiniSatProver.h
 
 $(DIRS):
 	mkdir -p $@
@@ -100,7 +106,7 @@ darwin: \
 	native/darwin/arm64/plingeling \
 	native/darwin/amd64/plingeling 
 
-linux: $(DIRS) $(REPOS) native headers
+linux: $(DIRS) $(REPOS) $(REPOS_PATHS) native headers 
 	./dockcross_linux bash -c "make build_linux_inner"
 
 build_linux_inner:
@@ -122,7 +128,7 @@ build_linux_inner:
 	cp build/plingeling native/linux/amd64/plingeling
 
 
-windows: $(DIRS) $(REPOS) headers
+windows: $(DIRS) $(REPOS) $(REPOS_PATHS) headers
 	./dockcross_windows bash -c "make build_windows_inner"
 
 build_windows_inner:

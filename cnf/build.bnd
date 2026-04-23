@@ -22,11 +22,11 @@ Bundle-Vendor:			AlloyTools at Github
 Bundle-DocURL: 			http://alloytools.org
 Bundle-License:			MIT
 
-base.version:           6.2.0
+base.version:           6.3.0
 Bundle-Version:         ${base.version}.${tstamp}
 
 # Remove -SNAPSHOT for release version
--pom:                   version=${base.version}
+-pom:                   version=${base.version}-SNAPSHOT
 -groupid:               org.alloytools
 -includepackage         *;from:=classes
 
@@ -54,9 +54,6 @@ Bundle-Version:         ${base.version}.${tstamp}
 -releaserepo: Nexus
 -buildrepo: Local
 
-# On Travis, you can set the secret as follows
-# travis encrypt REPOSITORY_USERNAME=<user> REPOSITORY_PASSWORD=<passwd> and add to env: \  secure:  
-
 pwd = ${env;REPOSITORY_PASSWORD;}
 usr = ${env;REPOSITORY_USERNAME;}
 
@@ -64,3 +61,26 @@ usr = ${env;REPOSITORY_USERNAME;}
 
 
 -includepackage *;from:=classes
+
+Automatic-Module-Name:  ${def;bsn}
+Bundle-Vendor:          Alloytools.org
+Bundle-Copyright:       Copyright (c) Alloytools.org
+SPDX-License-Identifier: (Apache-2.0)
+Bundle-License:         "${SPDX-License-Identifier}";\
+                        description="This program and the accompanying materials are made available under the terms of the Apache License";\
+                        link="https://opensource.org/licenses/Apache-2.0"
+Bundle-DocURL:          https://alloytools.org/
+Bundle-SCM:             url=https://github.com/AlloyTools/org.alloytools.alloy,\
+                        connection=scm:git:https://github.com/AlloyTools/org.alloytools.alloy.git,\
+                        developerConnection=scm:git:git@github.com:Alloytools/org.alloytools.alloy.git,\
+                        tag=${base.version}${if;${def;-snapshot;SNAPSHOT};-${def;-snapshot;SNAPSHOT}}
+Bundle-Developers: \
+    pkriens; \
+        email=Peter.Kriens@aQute.biz; \
+        name="Peter Kriens"; \
+        organization=Alloytools; \
+        organizationUrl=https://github.com/AlloyTools; \
+        roles="contact"; \
+        timezone=1
+
+# at least one name is needed by Maven Central so I used mine, feel free to add your own name

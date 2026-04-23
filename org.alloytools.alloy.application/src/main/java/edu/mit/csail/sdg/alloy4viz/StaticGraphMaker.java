@@ -23,10 +23,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import aQute.lib.justif.Justif;
 import edu.mit.csail.sdg.alloy4.ErrorFatal;
 import edu.mit.csail.sdg.alloy4.Util;
 import edu.mit.csail.sdg.alloy4graph.DotColor;
@@ -97,22 +99,56 @@ public final class StaticGraphMaker {
             proj = new AlloyProjection();
         Graph graph = new Graph(view.getFontSize() / 12.0D);
         new StaticGraphMaker(graph, instance, view, proj);
-        if (graph.nodes.size() == 0)
-            new GraphNode(graph, "", "Due to your theme settings, every atom is hidden.", "Please click Theme and adjust your settings.");
+        Set<AlloyType> distinctTypes = findNonIntAtoms(instance);
+        if (distinctTypes.isEmpty()) {
+            new GraphNode(graph, "", "No atoms found");
+        } else if (graph.nodes.size() == 0)
+            new GraphNode(graph, "", wrap("No visible atoms found, this can be caused by your theme settings.\nTheme settings might hide the following sigs that were found in the instance:\n" + distinctTypes));
         return new GraphViewer(parent, graph);
     }
 
-    /** The list of colors, in order, to assign each legend. */
-    private static final List<Color> colorsClassic  = Util.asList(new Color(228, 26, 28), new Color(166, 86, 40), new Color(255, 127, 0), new Color(77, 175, 74), new Color(55, 126, 184), new Color(152, 78, 163));
+    private static String[] wrap(String description) {
+        if (description == null)
+            return new String[0];
+        Justif justif = new Justif(40);
+        StringBuilder sb = new StringBuilder(description);
+        justif.wrap(sb);
+        return sb.toString().split("\n");
+    }
+
+    private static Set<AlloyType> findNonIntAtoms(AlloyInstance instance) {
+        return instance.getAllAtoms().stream().filter(x -> x.getType() != AlloyType.INT && x.getType() != AlloyType.SEQINT).map(x -> x.getType()).collect(Collectors.toSet());
+    }
 
     /** The list of colors, in order, to assign each legend. */
-    private static final List<Color> colorsStandard = Util.asList(new Color(227, 26, 28), new Color(255, 127, 0), new Color(251 * 8 / 10, 154 * 8 / 10, 153 * 8 / 10), new Color(51, 160, 44), new Color(31, 120, 180));
+    private static final List<Color> colorsClassic    = Util.asList(new Color(228, 26, 28), new Color(166, 86, 40), new Color(255, 127, 0), new Color(77, 175, 74), new Color(55, 126, 184), new Color(152, 78, 163));
 
     /** The list of colors, in order, to assign each legend. */
-    private static final List<Color> colorsMartha   = Util.asList(new Color(231, 138, 195), new Color(252, 141, 98), new Color(166, 216, 84), new Color(102, 194, 165), new Color(141, 160, 203));
+    private static final List<Color> colorsStandard   = Util.asList(new Color(227, 26, 28), new Color(255, 127, 0), new Color(251 * 8 / 10, 154 * 8 / 10, 153 * 8 / 10), new Color(51, 160, 44), new Color(31, 120, 180));
 
     /** The list of colors, in order, to assign each legend. */
-    private static final List<Color> colorsNeon     = Util.asList(new Color(231, 41, 138), new Color(217, 95, 2), new Color(166, 118, 29), new Color(102, 166, 30), new Color(27, 158, 119), new Color(117, 112, 179));
+    private static final List<Color> colorsMartha     = Util.asList(new Color(231, 138, 195), new Color(252, 141, 98), new Color(166, 216, 84), new Color(102, 194, 165), new Color(141, 160, 203));
+
+    /** The list of colors, in order, to assign each legend. */
+    private static final List<Color> colorsNeon       = Util.asList(new Color(231, 41, 138), new Color(217, 95, 2), new Color(166, 118, 29), new Color(102, 166, 30), new Color(27, 158, 119), new Color(117, 112, 179));
+
+    /** The list of colors, in order, to assign each legend. */
+    private static final List<Color> colorsColorBlind = Util.asList(new Color(119, 170, 221), new Color(153, 221, 255), new Color(187, 204, 51), new Color(170, 170, 0), new Color(238, 136, 102), new Color(255, 170, 187), new Color(221, 221, 221));
+
+    private List<Color> getColors(DotPalette palette) {
+        List<Color> colors;
+        if (palette == DotPalette.CLASSIC)
+            colors = colorsClassic;
+        else if (palette == DotPalette.STANDARD)
+            colors = colorsStandard;
+        else if (palette == DotPalette.MARTHA)
+            colors = colorsMartha;
+        else if (palette == DotPalette.TOL_LIGHT)
+            colors = colorsColorBlind;
+        else
+            colors = colorsNeon;
+        return colors;
+    }
 
     /**
      * The constructor takes an Instance and a View, then insert the generate
@@ -121,7 +157,8 @@ public final class StaticGraphMaker {
     private StaticGraphMaker(Graph graph, AlloyInstance originalInstance, VizState view, AlloyProjection proj) throws ErrorFatal {
         final boolean hidePrivate = view.hidePrivate();
         final boolean hideMeta = view.hideMeta();
-        final Map<AlloyRelation,Color> magicColor = new TreeMap<AlloyRelation,Color>();
+        final boolean hideSkolem = view.hideSkolem();
+        final Map<AlloyElement,Color> magicColor = new TreeMap<AlloyElement,Color>();
         final Map<AlloyRelation,Integer> rels = new TreeMap<AlloyRelation,Integer>();
         this.graph = graph;
         this.view = view;
@@ -130,39 +167,45 @@ public final class StaticGraphMaker {
         for (AlloyRelation rel : model.getRelations()) {
             rels.put(rel, null);
         }
-        List<Color> colors;
-        if (view.getEdgePalette() == DotPalette.CLASSIC)
-            colors = colorsClassic;
-        else if (view.getEdgePalette() == DotPalette.STANDARD)
-            colors = colorsStandard;
-        else if (view.getEdgePalette() == DotPalette.MARTHA)
-            colors = colorsMartha;
-        else
-            colors = colorsNeon;
+        List<Color> colors = getColors(view.getEdgePalette());
         int ci = 0;
         for (AlloyRelation rel : model.getRelations()) {
             DotColor c = view.edgeColor.resolve(rel);
             Color cc = (c == DotColor.MAGIC) ? colors.get(ci) : c.getColor(view.getEdgePalette());
-            int count = ((hidePrivate && rel.isPrivate) || !view.edgeVisible.resolve(rel)) ? 0 : edgesAsArcs(hidePrivate, hideMeta, rel, colors.get(ci));
+            int count = ((hidePrivate && rel.isPrivate) || (hideSkolem && rel.isSkolem) || !view.edgeVisible.resolve(rel)) ? 0 : edgesAsArcs(hidePrivate, hideMeta, hideSkolem, rel, colors.get(ci));
             rels.put(rel, count);
             magicColor.put(rel, cc);
-            if (count > 0)
+            if (!(hidePrivate && rel.isPrivate) && !(hideSkolem && rel.isSkolem) && view.edgeVisible.resolve(rel) && model.getNonEmpty().contains(rel))
                 ci = (ci + 1) % (colors.size());
         }
+        ci = 0;
+        colors = getColors(view.getNodePalette());
+        for (AlloyType typ : model.getTypes()) {
+            DotColor c = view.nodeColor.resolve(typ);
+            Color cc = (c == DotColor.MAGIC) ? colors.get(ci) : c.getColor(view.getEdgePalette());
+            magicColor.put(typ, cc);
+            if (!(hidePrivate && typ.isPrivate) && view.nodeVisible.resolve(typ) && model.getNonEmpty().contains(typ))
+                ci = (ci + 1) % (colors.size());
+        }
+
         for (AlloyAtom atom : instance.getAllAtoms()) {
             List<AlloySet> sets = instance.atom2sets(atom);
-            if (sets.size() > 0) {
-                for (AlloySet s : sets)
+            boolean any = false;
+            for (AlloySet s : sets)
+                if (!(hideSkolem && s.isSkolem)) {
+                    any = true;
                     if (view.nodeVisible.resolve(s) && !view.hideUnconnected.resolve(s)) {
-                        createNode(hidePrivate, hideMeta, atom);
+                        createNode(hidePrivate, hideMeta, hideSkolem, atom, magicColor.get(atom.getType()));
                         break;
                     }
-            } else if (view.nodeVisible.resolve(atom.getType()) && !view.hideUnconnected.resolve(atom.getType())) {
-                createNode(hidePrivate, hideMeta, atom);
-            }
+                }
+            if (!any)
+                if (view.nodeVisible.resolve(atom.getType()) && !view.hideUnconnected.resolve(atom.getType())) {
+                    createNode(hidePrivate, hideMeta, hideSkolem, atom, magicColor.get(atom.getType()));
+                }
         }
         for (AlloyRelation rel : model.getRelations())
-            if (!(hidePrivate && rel.isPrivate))
+            if (!(hidePrivate && rel.isPrivate) && !(hideSkolem && rel.isSkolem))
                 if (view.attribute.resolve(rel))
                     edgesAsAttribute(rel);
         for (Map.Entry<GraphNode,Set<String>> e : attribs.entrySet()) {
@@ -189,24 +232,37 @@ public final class StaticGraphMaker {
      *
      * @return null if the atom is explicitly marked as "Don't Show".
      */
-    private GraphNode createNode(final boolean hidePrivate, final boolean hideMeta, final AlloyAtom atom) {
+    private GraphNode createNode(final boolean hidePrivate, final boolean hideMeta, final boolean hideSkolem, final AlloyAtom atom, Color magicColor) {
         GraphNode node = atom2node.get(atom);
-        if (node != null)
+        if (node != null) {
+            DotColor color = view.nodeColor(atom, instance);
+            if (color == DotColor.MAGIC && magicColor != null)
+                node.set(magicColor);
             return node;
+        }
         if ((hidePrivate && atom.getType().isPrivate) || (hideMeta && atom.getType().isMeta) || !view.nodeVisible(atom, instance))
             return null;
+        for (AlloySet set : instance.atom2sets(atom))
+            if (hidePrivate && set.isPrivate)
+                return null;
         // Make the node
         DotColor color = view.nodeColor(atom, instance);
         DotStyle style = view.nodeStyle(atom, instance);
         DotShape shape = view.shape(atom, instance);
         String label = atomname(atom, false);
-        node = new GraphNode(graph, atom, label).set(shape).set(color.getColor(view.getNodePalette())).set(style);
+
+        node = new GraphNode(graph, atom, label).set(shape).set(style);
+        if (color == DotColor.MAGIC && magicColor != null)
+            node.set(magicColor);
+        else
+            node.set(color.getColor(view.getNodePalette()));
+
         // Get the label based on the sets and relations
         String setsLabel = "";
         boolean showLabelByDefault = view.showAsLabel.get(null);
         for (AlloySet set : instance.atom2sets(atom)) {
             String x = view.label.get(set);
-            if (x.length() == 0)
+            if (x.length() == 0 || (hideSkolem && set.isSkolem))
                 continue;
             Boolean showLabel = view.showAsLabel.get(set);
             if ((showLabel == null && showLabelByDefault) || (showLabel != null && showLabel.booleanValue()))
@@ -227,7 +283,7 @@ public final class StaticGraphMaker {
      * Create an edge for a given tuple from a relation (if neither start nor end
      * node is explicitly invisible)
      */
-    private boolean createEdge(final boolean hidePrivate, final boolean hideMeta, AlloyRelation rel, AlloyTuple tuple, boolean bidirectional, Color magicColor) {
+    private boolean createEdge(final boolean hidePrivate, final boolean hideMeta, final boolean hideSkolem, AlloyRelation rel, AlloyTuple tuple, boolean bidirectional, Color magicColor) {
         // This edge represents a given tuple from a given relation.
         //
         // If the tuple's arity==2, then the label is simply the label of the
@@ -241,8 +297,8 @@ public final class StaticGraphMaker {
             return false;
         if ((hidePrivate && tuple.getEnd().getType().isPrivate) || (hideMeta && tuple.getEnd().getType().isMeta) || !view.nodeVisible(tuple.getEnd(), instance))
             return false;
-        GraphNode start = createNode(hidePrivate, hideMeta, tuple.getStart());
-        GraphNode end = createNode(hidePrivate, hideMeta, tuple.getEnd());
+        GraphNode start = createNode(hidePrivate, hideMeta, hideSkolem, tuple.getStart(), null);
+        GraphNode end = createNode(hidePrivate, hideMeta, hideSkolem, tuple.getEnd(), null);
         if (start == null || end == null)
             return false;
         boolean layoutBack = view.layoutBack.resolve(rel);
@@ -279,13 +335,13 @@ public final class StaticGraphMaker {
     /**
      * Create edges for every visible tuple in the given relation.
      */
-    private int edgesAsArcs(final boolean hidePrivate, final boolean hideMeta, AlloyRelation rel, Color magicColor) {
+    private int edgesAsArcs(final boolean hidePrivate, final boolean hideMeta, final boolean hideSkolem, AlloyRelation rel, Color magicColor) {
         int count = 0;
         if (!view.mergeArrows.resolve(rel)) {
             // If we're not merging bidirectional arrows, simply create an edge
             // for each tuple.
             for (AlloyTuple tuple : instance.relation2tuples(rel))
-                if (createEdge(hidePrivate, hideMeta, rel, tuple, false, magicColor))
+                if (createEdge(hidePrivate, hideMeta, hideSkolem, rel, tuple, false, magicColor))
                     count++;
             return count;
         }
@@ -300,10 +356,10 @@ public final class StaticGraphMaker {
                 // self-edge, then draw it as a <-> arrow.
                 if (reverse != null && tuples.contains(reverse) && !reverse.equals(tuple)) {
                     ignore.add(reverse);
-                    if (createEdge(hidePrivate, hideMeta, rel, tuple, true, magicColor))
+                    if (createEdge(hidePrivate, hideMeta, hideSkolem, rel, tuple, true, magicColor))
                         count = count + 2;
                 } else {
-                    if (createEdge(hidePrivate, hideMeta, rel, tuple, false, magicColor))
+                    if (createEdge(hidePrivate, hideMeta, hideSkolem, rel, tuple, false, magicColor))
                         count = count + 1;
                 }
             }

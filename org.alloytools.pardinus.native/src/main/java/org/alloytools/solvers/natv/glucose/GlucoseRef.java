@@ -19,8 +19,10 @@ public class GlucoseRef extends SATFactory {
 
     @Override
     public String[] getLibraries() {
-        return new String[] {
-                             "glucose"
+        return isWindows ? new String[] {
+                                         "libwinpthread-1", "libgcc_s_seh-1", "libstdc++-6", "glucose"
+        } : new String[] {
+                          "glucose"
         };
     }
 
@@ -35,7 +37,7 @@ public class GlucoseRef extends SATFactory {
     }
 
     @Override
-    public SATSolver instance() {
+    public SATSolver createSolver() {
         return new Glucose();
     }
 

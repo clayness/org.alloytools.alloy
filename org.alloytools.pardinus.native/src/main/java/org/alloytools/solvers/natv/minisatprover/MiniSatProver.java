@@ -46,14 +46,10 @@ final public class MiniSatProver extends NativeSolver implements SATProver {
      * Constructs a new MiniSat prover wrapper.
      */
     public MiniSatProver() {
-        super(make());
+        super(NativeSolver.make("MiniSatProver", MiniSatProver::make));
         proof = null;
     }
 
-
-    static {
-        loadLibrary(MiniSatProver.class);
-    }
 
     /**
      * Returns a subset of the given trivial trace that consists only of axioms. A
@@ -149,10 +145,10 @@ final public class MiniSatProver extends NativeSolver implements SATProver {
             throw new IllegalStateException();
         if (proof == null) {
             final int[][] trace = trace(peer(), true);
-            free();
+
             // if the empty axiom was added to the solver, that axiom will be
             // the last clause in the trace, and it will form its own minimal unsat core.
-            //System.out.println(Arrays.deepToString(trace));
+
             if (trace[trace.length - 1].length == 0) {
                 proof = new LazyTrace(formatTrivial(trace), numberOfClauses());
             } else {

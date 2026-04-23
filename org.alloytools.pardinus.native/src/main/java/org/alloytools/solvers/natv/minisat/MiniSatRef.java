@@ -17,7 +17,7 @@ public class MiniSatRef extends SATFactory {
     }
 
     @Override
-    public SATSolver instance() {
+    public SATSolver createSolver() {
         return new MiniSat();
     }
 
@@ -28,8 +28,10 @@ public class MiniSatRef extends SATFactory {
 
     @Override
     public String[] getLibraries() {
-        return new String[] {
-                             "minisat"
+        return isWindows ? new String[] {
+                                         "libwinpthread-1", "libgcc_s_seh-1", "libstdc++-6", "minisat"
+        } : new String[] {
+                          "minisat"
         };
     }
 

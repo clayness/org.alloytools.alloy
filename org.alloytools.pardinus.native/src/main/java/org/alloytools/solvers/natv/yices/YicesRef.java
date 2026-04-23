@@ -1,9 +1,8 @@
 package org.alloytools.solvers.natv.yices;
 
-import aQute.bnd.annotation.spi.ServiceProvider;
 import kodkod.engine.satlab.SATFactory;
 
-@ServiceProvider(SATFactory.class )
+//@ServiceProvider(SATFactory.class )
 public class YicesRef extends SATFactory {
 
     private static final long serialVersionUID = 1L;
@@ -21,7 +20,7 @@ public class YicesRef extends SATFactory {
     }
 
     @Override
-    public Yices instance() {
+    public Yices createSolver() {
         return new Yices();
     }
 

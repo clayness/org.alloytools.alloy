@@ -35,13 +35,8 @@ public final class MiniSat extends NativeSolver {
      * Constructs a new MiniSAT wrapper.
      */
     public MiniSat() {
-        super(make());
+        super(NativeSolver.make("MiniSat", MiniSat::make));
     }
-
-    static {
-        loadLibrary(MiniSat.class);
-    }
-
 
     /**
      * {@inheritDoc}

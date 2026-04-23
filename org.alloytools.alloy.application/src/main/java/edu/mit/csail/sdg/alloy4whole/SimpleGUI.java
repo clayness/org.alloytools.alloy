@@ -204,9 +204,7 @@ import kodkod.engine.satlab.SATFactory;
  */
 public final class SimpleGUI implements ComponentListener, Listener {
 
-    final static Pattern TYPED_P = Pattern.compile("([A-Z]{3,6}):");
-
-    MacUtil macUtil;
+    final static Pattern TYPED_P = Pattern.compile("([A-Za-z]{3,6}):");
 
     /**
      * The latest welcome screen; each time we update the welcome screen, we
@@ -935,9 +933,11 @@ public final class SimpleGUI implements ComponentListener, Listener {
             } else {
                 UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
             }
-            SwingUtilities.updateComponentTreeUI(frame);
-            SwingUtilities.updateComponentTreeUI(prefDialog);
-            SwingUtilities.updateComponentTreeUI(viz.getFrame());
+            if (frame != null) {
+                SwingUtilities.updateComponentTreeUI(frame);
+                SwingUtilities.updateComponentTreeUI(prefDialog);
+                SwingUtilities.updateComponentTreeUI(viz.getFrame());
+            }
         } catch (Throwable e) {
         }
         return null;
@@ -1147,7 +1147,7 @@ public final class SimpleGUI implements ComponentListener, Listener {
             int newmem = SubMemory.get(), newstack = SubStack.get();
             if (newmem != subMemoryNow || newstack != subStackNow)
                 WorkerEngine.stop();
-            if (AlloyCore.isDebug() && VerbosityPref.get() == Verbosity.FULLDEBUG)
+            if (AlloyCore.isDebug())
                 WorkerEngine.runLocally(task, cb);
             else
                 WorkerEngine.run(task, newmem, newstack, "", cb);
@@ -1195,6 +1195,8 @@ public final class SimpleGUI implements ComponentListener, Listener {
             else if (AutoVisualize.get() || subrunningTask == 1) {
                 doVisualize(f);
             }
+        } else {
+            viz.noNewInstance();
         }
         return null;
     }
@@ -1954,14 +1956,6 @@ public final class SimpleGUI implements ComponentListener, Listener {
             System.setProperty("com.apple.macos.useScreenMenuBar", "true");
             System.setProperty("apple.laf.useScreenMenuBar", "true");
         }
-        if (Util.onMac()) {
-            try {
-                macUtil = new MacUtil();
-                macUtil.addMenus(this);
-            } catch (NoClassDefFoundError e) {
-                // ignore
-            }
-        }
 
         doLookAndFeel();
 
@@ -2186,18 +2180,6 @@ public final class SimpleGUI implements ComponentListener, Listener {
             log.log(" [in debug mode]");
         }
         log.log("\n\n");
-
-        // If on Mac, then register an application listener
-        try {
-            wrap = true;
-            if (Util.onMac()) {
-                macUtil.registerApplicationListener(doShow(), doAbout(), doOpenFile(""), doQuit());
-            }
-        } catch (Throwable t) {
-        } finally {
-            wrap = false;
-        }
-
 
         // Pre-load the preferences dialog
         prefDialog = new PreferencesDialog(log);

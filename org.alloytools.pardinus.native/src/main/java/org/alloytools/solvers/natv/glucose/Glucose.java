@@ -34,11 +34,7 @@ public final class Glucose extends NativeSolver {
      * Constructs a new Glucose wrapper.
      */
     public Glucose() {
-        super(make());
-    }
-
-    static {
-        loadLibrary(Glucose.class);
+        super(NativeSolver.make("Glucose", Glucose::make));
     }
 
     /**
